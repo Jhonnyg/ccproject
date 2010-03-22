@@ -8,7 +8,8 @@ int lol()
 	boolean b = true;
 
 	int k = 10 * 5;
-	int u = 1.0 * 1.0;
+
+	boolean kuk = 10 > 5;
 
 	return a(5);
 }
