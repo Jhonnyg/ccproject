@@ -144,7 +144,7 @@ checkBoolean e0 e1 = do
 checkStm :: Stmt -> TC ()
 checkStm stm = do
 	case stm of
-		Empty 			-> undefined
+		Empty 			-> return ()
 		BStmt (Block stmts) 	-> undefined
 		Decl  t itmList		-> undefined
 		--NoInit name		-> undefined i think this is used in interpreter to flag wheter or not a variable is intiated with a value or not!
