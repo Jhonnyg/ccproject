@@ -144,19 +144,39 @@ checkBoolean e0 e1 = do
 checkStm :: Stmt -> TC ()
 checkStm stm = do
 	case stm of
-		Empty 			-> undefined
+		Empty 			-> return ()
 		BStmt (Block stmts) 	-> undefined
 		Decl  t itmList		-> do
 			return()
 			
 		--NoInit name		-> undefined i think this is used in interpreter to flag wheter or not a variable is intiated with a value or not!
 		--Init name expr	-> undefined
-		Ass name epxr		-> undefined
-		Incr name		-> undefined
-		Decr name		-> undefined
+		Ass name epxr		-> do
+		  vartype <- lookVar name
+		  exptype <- inferExp epxr
+		  if vartype == exptype
+		    then return ()
+		    else fail $ "Trying to assign " ++ (show name) ++ " (which has type " ++ (show vartype) ++ ") with an expression of type " ++ (show exptype)
+		    
+		Incr name		-> do
+		  typ <- lookVar name
+		  if typ == Int
+		    then return ()
+		    else fail $ "Trying to increment " ++ (show name) ++ ", which has type " ++ (show typ)
+		    
+		Decr name		-> do
+		  typ <- lookVar name
+		  if typ == Int
+		    then return ()
+		    else fail $ "Trying to decrement " ++ (show name) ++ ", which has type " ++ (show typ)
+		    
 		Ret  expr     		-> do
-		  inferExp expr
-		  return ()
+		  rettype <- gets returnType
+		  exptype <- inferExp expr
+		  if rettype == exptype
+		    then return ()
+		    else fail $ "Trying to return with type " ++ (show exptype) ++ " in a function with type " ++ (show rettype)
+		  
 		VRet     		-> do
 		  rettype <- gets returnType
 		  if rettype == Void
@@ -165,18 +185,23 @@ checkStm stm = do
 		    
 		Cond expr stmt		-> do
 		  exptype <- inferExp expr
-		  when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
+		  when (exptype /= Bool) (fail $ "Conditional expression for if-else-statement  not of boolean type: " ++ (show exptype))
 		  checkStm stmt
 		  return ()
 		    
 		CondElse  expr ifs els  -> do
 		  exptype <- inferExp expr
-		  when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
+		  when (exptype /= Bool) (fail $ "Conditional expression for if-statement not of boolean type: " ++ (show exptype))
 		  checkStm ifs
 		  checkStm els
 		  return ()
 		  
-		While expr stmt		-> undefined
+		While expr stmt		->   do
+  		  exptype <- inferExp expr
+  		  when (exptype /= Bool) (fail $ "Conditional expression for while-statement not of boolean type: " ++ (show exptype))
+  		  checkStm stmt
+  		  return ()
+  		  
 		SExp exprs		-> do
 		  inferExp exprs
 		  return ()

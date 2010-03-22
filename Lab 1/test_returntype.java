@@ -1,12 +1,8 @@
 
-void main()
+int main()
 {
-  if (true)
-  {
-    
-  } else {
-    
-  }
+  double t;
+  t--;
 
 	return;
 }
