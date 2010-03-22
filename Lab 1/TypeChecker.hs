@@ -147,7 +147,15 @@ checkStm stm = do
 		Empty 			-> return ()
 		BStmt (Block stmts) 	-> undefined
 		Decl  t itmList		-> do
-			return()
+		  mapM_ (addItem t) itmList
+			return ()
+			where
+			  addItem t (Init name expr) = do
+			    exprtype <- inferExp expr
+			    when (t /= exprtype) (fail $ "Trying to assign variable " ++ (show name) ++ " (which has type " ++ (show t) ++ ") with an expression of type " ++ (show exprtype))
+			    addVar name t
+			    
+			  addItem t (NoInit name) = addVar name t
 			
 		--NoInit name		-> undefined i think this is used in interpreter to flag wheter or not a variable is intiated with a value or not!
 		--Init name expr	-> undefined
