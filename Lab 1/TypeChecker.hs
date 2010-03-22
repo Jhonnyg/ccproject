@@ -109,8 +109,11 @@ inferExp expr = do
 		Neg expr	-> do
 			exprVal <- inferExp expr
 			when (exprVal /= Int && exprVal /= Doub) (fail $ "Negation requires either Int or Double. " ++ (show exprVal) ++ " was passed.")
-			return exprVal
-		Not expr	-> undefined
+			return exprVal			
+		Not expr	-> do
+			exprVal <- inferExp expr
+			when (exprVal /= Bool) (fail $ "Not expression requires Bool. " ++ (show exprVal) ++ " was passed.")
+			return exprVal			
 		EMul e0 op e1	-> do
 			typ0 <- inferExp e0
 			typ1 <- inferExp e1
