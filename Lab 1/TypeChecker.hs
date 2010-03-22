@@ -106,7 +106,10 @@ inferExp expr = do
 			(argListTypes,returnType) <- lookFun n
 			when (length argListTypes /= 1) (fail $ "Expected 1 parameter for function " ++ (show n)) -- LOL STRING
 			return returnType
-		Neg expr	-> undefined
+		Neg expr	-> do
+			exprVal <- inferExp expr
+			when (exprVal /= Int && exprVal /= Doub) (fail $ "Negation requires either Int or Double. " ++ (show exprVal) ++ " was passed.")
+			return exprVal
 		Not expr	-> undefined
 		EMul e0 op e1	-> undefined
 		EAdd e0 op e1	-> undefined
