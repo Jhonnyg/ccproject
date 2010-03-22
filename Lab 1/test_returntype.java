@@ -4,7 +4,9 @@
 void main()
 {
 	
-	bajs("LOL");
+	int a, b;
+	int c;
+	a * c;
 
 	return;
 }
