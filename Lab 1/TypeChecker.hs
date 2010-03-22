@@ -138,12 +138,20 @@ checkStm stm = do
 		Ass name epxr		-> undefined
 		Incr name		-> undefined
 		Decr name		-> undefined
-		Ret  expr     		-> undefined
-		VRet     		-> undefined 
+		Ret  expr     		-> do
+		  inferExp expr
+		  return ()
+		VRet     		-> do
+		  rettype <- gets returnType
+		  if rettype == Void
+		    then return ()
+		    else fail $ "Trying to return void in a function of type: " ++ (show rettype)
 		Cond expr stmt		-> undefined
 		CondElse  expr ifs els  -> undefined 
 		While expr stmt		-> undefined
-		SExp exprs		-> undefined
+		SExp exprs		-> do
+		  inferExp exprs
+		  return ()
 		
 
 checkDef :: TopDef -> TC ()
