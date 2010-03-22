@@ -147,7 +147,9 @@ checkStm :: Stmt -> TC ()
 checkStm stm = do
 	case stm of
 		Empty 			-> return ()
-		BStmt (Block stmts) 	-> undefined
+		BStmt (Block stmts) 	-> do
+			mapM_ (checkStm) stmts
+			
 		Decl  t itmList		-> do
 		  	mapM_ (addItem t) itmList
 			return ()
