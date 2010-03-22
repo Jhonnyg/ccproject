@@ -1,8 +1,8 @@
 
-int main()
+void main()
 {
+  if (1);
 
 	return;
-
 }
 
