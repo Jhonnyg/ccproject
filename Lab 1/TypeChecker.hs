@@ -161,12 +161,18 @@ checkStm stm = do
 		    else fail $ "Trying to return void in a function of type: " ++ (show rettype)
 		    
 		Cond expr stmt		-> do
-		    exptype <- inferExp expr
-		    when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
-		    checkStm stmt
-		    return ()
+		  exptype <- inferExp expr
+		  when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
+		  checkStm stmt
+		  return ()
 		    
-		CondElse  expr ifs els  -> undefined 
+		CondElse  expr ifs els  -> do
+		  exptype <- inferExp expr
+		  when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
+		  checkStm ifs
+		  checkStm els
+		  return ()
+		  
 		While expr stmt		-> undefined
 		SExp exprs		-> do
 		  inferExp exprs
