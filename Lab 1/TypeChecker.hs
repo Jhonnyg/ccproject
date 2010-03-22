@@ -93,10 +93,18 @@ inferExp expr = do
 		EVar name 	-> undefined
 		ELitInt i 	-> return Int 
 		ELitDoub d 	-> return Doub
-		ELitTrue	-> undefined
-		ELitFalse	-> undefined
-		EApp n expL 	-> undefined
-		EAppS n _	-> undefined
+		ELitTrue	-> return Bool
+		ELitFalse	-> return Bool
+		EApp n expList 	-> undefined
+		EAppS n str	-> undefined
+		Neg expr	-> undefined
+		Not expr	-> undefined
+		EMul e0 op e1	-> undefined
+		EAdd e0 op e1	-> undefined
+		ERel e0 op e1	-> undefined
+		EAnd e0 e1	-> undefined
+		EOr e0 e1	-> undefined
+		
 
 -- Check unary numeric operations such as ++ (exp)
 checkUnaryOperation :: Expr -> TC Type
