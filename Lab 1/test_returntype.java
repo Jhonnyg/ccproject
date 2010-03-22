@@ -1,12 +1,7 @@
 
 void main()
 {
-  if (true)
-  {
-    
-  } else {
-    
-  }
+  while (1);
 
 	return;
 }

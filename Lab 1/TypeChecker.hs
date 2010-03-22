@@ -163,18 +163,23 @@ checkStm stm = do
 		    
 		Cond expr stmt		-> do
 		  exptype <- inferExp expr
-		  when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
+		  when (exptype /= Bool) (fail $ "Conditional expression for if-else-statement  not of boolean type: " ++ (show exptype))
 		  checkStm stmt
 		  return ()
 		    
 		CondElse  expr ifs els  -> do
 		  exptype <- inferExp expr
-		  when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
+		  when (exptype /= Bool) (fail $ "Conditional expression for if-statement not of boolean type: " ++ (show exptype))
 		  checkStm ifs
 		  checkStm els
 		  return ()
 		  
-		While expr stmt		-> undefined
+		While expr stmt		->   do
+  		  exptype <- inferExp expr
+  		  when (exptype /= Bool) (fail $ "Conditional expression for while-statement not of boolean type: " ++ (show exptype))
+  		  checkStm stmt
+  		  return ()
+  		  
 		SExp exprs		-> do
 		  inferExp exprs
 		  return ()
