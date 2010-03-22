@@ -1,9 +1,14 @@
 
 int main()
 {
-  double t;
-  t--;
+  boolean lol;
+	
+	if (lol)
+	{
+		lol = false;
+		lol = true;
+	}
 
-	return;
+	return 1;
 }
 
