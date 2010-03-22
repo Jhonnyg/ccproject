@@ -129,12 +129,23 @@ checkBoolean e0 e1 = do
 			else fail $ "Boolean operation has different argument types: " ++ (show iType0) ++ "," ++ (show iType1)
 
 checkStm :: Stmt -> TC ()
-checkStm stm = undefined
-{-	
-	do
+checkStm stm = do
 	case stm of
-		undefined	
--}
+		Empty 			-> undefined
+		BStmt (Block stmts) 	-> undefined
+		Decl  t itmList		-> undefined
+		--NoInit name		-> undefined i think this is used in interpreter to flag wheter or not a variable is intiated with a value or not!
+		--Init name expr	-> undefined
+		Ass name epxr		-> undefined
+		Incr name		-> undefined
+		Decr name		-> undefined
+		Ret  expr     		-> undefined
+		VRet     		-> undefined 
+		Cond expr stmt		-> undefined
+		CondElse  expr ifs els  -> undefined 
+		While expr stmt		-> undefined
+		SExp exprs		-> undefined
+		
 
 checkDef :: TopDef -> TC ()
 checkDef (FnDef retType name args (Block stms)) = do
