@@ -5,8 +5,8 @@ void main()
 {
 	
 	int a, b;
-	int c;
-	a * c;
+	boolean c, d;
+	d < c;
 
 	return;
 }
