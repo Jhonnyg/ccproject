@@ -120,7 +120,13 @@ inferExp expr = do
 			when (typ0 /= typ1 || (typ0 /= Int && typ0 /= Doub)) (fail $ "Trying to multiply with operator " ++ (show op) ++ ", on expressions of type " ++ (show typ0) ++ " and " ++ (show typ1))
 			return typ0
 		EAdd e0 op e1	-> undefined
-		ERel e0 op e1	-> undefined
+		ERel e0 (EQU) e1 -> do
+			typ0 <- inferExp e0
+			typ1 <- inferExp e1
+			when (typ0 /= typ1) (fail $ "Trying to compare two expressions with different type (" ++ (show typ0) ++ " and " ++ (show typ1) ++ ")")
+			return typ0
+		ERel e0 op e1	-> do
+			checkBinaryOperation e0 e1
 		EAnd e0 e1	-> checkBoolean e0 e1
 		EOr e0 e1	-> checkBoolean e0 e1
 		
@@ -140,7 +146,7 @@ checkBinaryOperation e0 e1 = do
 		iType1 <- inferExp e1
 		if (iType0 == iType1 && iType0 /= Bool && iType0 /= Void)
 			then return iType0
-			else fail $ "Arithmetic operation have different argument types: " ++ (show iType0) ++ "," ++ (show iType1) 
+			else fail $ "Arithmetic operation have different (or invalid) argument types: " ++ (show iType0) ++ "," ++ (show iType1) 
 
 checkComparator :: Expr -> Expr -> TC Type
 checkComparator e0 e1 = do
