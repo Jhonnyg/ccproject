@@ -104,7 +104,7 @@ inferExp expr = do
 			return returnType
 		EAppS n str	-> do
 			(argListTypes,returnType) <- lookFun n
-			when (length argListTypes /= 1) (fail $ "Expected 1 parameter") -- LOL STRING
+			when (length argListTypes /= 1) (fail $ "Expected 1 parameter for function " ++ (show n)) -- LOL STRING
 			return returnType
 		Neg expr	-> undefined
 		Not expr	-> undefined
