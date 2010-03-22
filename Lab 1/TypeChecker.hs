@@ -146,7 +146,9 @@ checkStm stm = do
 	case stm of
 		Empty 			-> undefined
 		BStmt (Block stmts) 	-> undefined
-		Decl  t itmList		-> undefined
+		Decl  t itmList		-> do
+			return()
+			
 		--NoInit name		-> undefined i think this is used in interpreter to flag wheter or not a variable is intiated with a value or not!
 		--Init name expr	-> undefined
 		Ass name epxr		-> undefined

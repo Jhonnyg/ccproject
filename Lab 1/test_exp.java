@@ -1,7 +1,7 @@
 int lol()
 {
-	bool hej = true;
-	if(hej) ;
+	int hej = 10;
+	//if(hej) ;
 
-	return 0;
+	return hej;
 }
