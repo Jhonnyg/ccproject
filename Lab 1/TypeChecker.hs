@@ -137,7 +137,7 @@ checkStm stm = undefined
 -}
 
 checkDef :: TopDef -> TC ()
-checkDef (FnDef retType name args stms) = do
+checkDef (FnDef retType name args (Block stms)) = do
 	pushContext
 	modify (\e -> e { returnType = retType } )
 	mapM_ addArgs args  
