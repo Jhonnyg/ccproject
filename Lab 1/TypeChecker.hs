@@ -147,9 +147,10 @@ checkStm stm = do
 		Empty 			-> return ()
 		BStmt (Block stmts) 	-> undefined
 		Decl  t itmList		-> do
-		  mapM_ (addItem t) itmList
+		  	mapM_ (addItem t) itmList
 			return ()
 			where
+			  addItem :: Type -> Item -> TC ()
 			  addItem t (Init name expr) = do
 			    exprtype <- inferExp expr
 			    when (t /= exprtype) (fail $ "Trying to assign variable " ++ (show name) ++ " (which has type " ++ (show t) ++ ") with an expression of type " ++ (show exprtype))
