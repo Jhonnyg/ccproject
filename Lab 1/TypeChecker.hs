@@ -148,9 +148,8 @@ checkStm stm = do
 		BStmt (Block stmts) 	-> undefined
 		Decl  t itmList		-> do
 			return()
-			
-		--NoInit name		-> undefined i think this is used in interpreter to flag wheter or not a variable is intiated with a value or not!
-		--Init name expr	-> undefined
+			where
+		
 		Ass name epxr		-> do
 		  vartype <- lookVar name
 		  exptype <- inferExp epxr
