@@ -1,7 +1,9 @@
+int a(int b) 
+{
+	return b;
+}
+
 int lol()
 {
-	int hej = 10;
-	//if(hej) ;
-
-	return hej;
+	return a(5);
 }

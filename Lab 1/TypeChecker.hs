@@ -98,9 +98,14 @@ inferExp expr = do
 		ELitTrue	-> return Bool
 		ELitFalse	-> return Bool
 		EApp n expList 	-> do
-			(tList,t) <- lookFun n
-			return () 
-		EAppS n str	-> undefined
+			(argListTypes,returnType) <- lookFun n
+			inferredTypes <- mapM inferExp expList
+			when (inferredTypes /= argListTypes) (fail $ "Function " ++ (show n) ++ " passed with incorrect argument types")
+			return returnType
+		EAppS n str	-> do
+			(argListTypes,returnType) <- lookFun n
+			when (length argListTypes /= 1) (fail $ "Expected 1 parameter") -- LOL STRING
+			return returnType
 		Neg expr	-> undefined
 		Not expr	-> undefined
 		EMul e0 op e1	-> undefined
