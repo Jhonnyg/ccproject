@@ -97,7 +97,9 @@ inferExp expr = do
 		ELitDoub d 	-> return Doub
 		ELitTrue	-> return Bool
 		ELitFalse	-> return Bool
-		EApp n expList 	-> undefined
+		EApp n expList 	-> do
+			(tList,t) <- lookFun n
+			return () 
 		EAppS n str	-> undefined
 		Neg expr	-> undefined
 		Not expr	-> undefined
