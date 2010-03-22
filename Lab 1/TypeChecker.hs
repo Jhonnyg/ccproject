@@ -160,8 +160,25 @@ checkStm stm = do
 		  if rettype == Void
 		    then return ()
 		    else fail $ "Trying to return void in a function of type: " ++ (show rettype)
+<<<<<<< HEAD:Lab 1/TypeChecker.hs
 		Cond expr stmt		-> undefined
 		CondElse  expr ifs els  -> undefined 
+=======
+		    
+		Cond expr stmt		-> do
+		  exptype <- inferExp expr
+		  when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
+		  checkStm stmt
+		  return ()
+		    
+		CondElse  expr ifs els  -> do
+		  exptype <- inferExp expr
+		  when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
+		  checkStm ifs
+		  checkStm els
+		  return ()
+		  
+>>>>>>> a1aff15c221038e4c34bfed89613196afe9db661:Lab 1/TypeChecker.hs
 		While expr stmt		-> undefined
 		SExp exprs		-> do
 		  inferExp exprs
