@@ -5,5 +5,6 @@ int a(int b)
 
 int lol()
 {
+	boolean pung = -true;
 	return a(5);
 }
