@@ -91,8 +91,12 @@ inferExp :: Expr -> TC Type
 inferExp expr = do
 	case expr of
 		EVar name 	-> undefined
-		ELitInt i 	-> undefined --Int i
-		ELitDoub d 	-> undefined --Doub d
+		ELitInt i 	-> return Int 
+		ELitDoub d 	-> return Doub
+		ELitTrue	-> undefined
+		ELitFalse	-> undefined
+		EApp n expL 	-> undefined
+		EAppS n _	-> undefined
 
 -- Check unary numeric operations such as ++ (exp)
 checkUnaryOperation :: Expr -> TC Type
