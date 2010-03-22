@@ -102,8 +102,8 @@ inferExp expr = do
 		EMul e0 op e1	-> undefined
 		EAdd e0 op e1	-> undefined
 		ERel e0 op e1	-> undefined
-		EAnd e0 e1	-> undefined
-		EOr e0 e1	-> undefined
+		EAnd e0 e1	-> checkBoolean e0 e1
+		EOr e0 e1	-> checkBoolean e0 e1
 		
 
 -- Check unary numeric operations such as ++ (exp)
