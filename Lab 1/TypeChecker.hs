@@ -90,7 +90,9 @@ lookFun fName = do
 inferExp :: Expr -> TC Type
 inferExp expr = do
 	case expr of
-		EVar name 	-> undefined
+		EVar name 	-> do
+			varName <- lookVar name
+			return varName
 		ELitInt i 	-> return Int 
 		ELitDoub d 	-> return Doub
 		ELitTrue	-> return Bool
@@ -142,7 +144,7 @@ checkBoolean e0 e1 = do
 checkStm :: Stmt -> TC ()
 checkStm stm = do
 	case stm of
-		Empty 			-> return ()
+		Empty 			-> undefined
 		BStmt (Block stmts) 	-> undefined
 		Decl  t itmList		-> undefined
 		--NoInit name		-> undefined i think this is used in interpreter to flag wheter or not a variable is intiated with a value or not!
@@ -153,19 +155,12 @@ checkStm stm = do
 		Ret  expr     		-> do
 		  inferExp expr
 		  return ()
-		  
 		VRet     		-> do
 		  rettype <- gets returnType
 		  if rettype == Void
 		    then return ()
 		    else fail $ "Trying to return void in a function of type: " ++ (show rettype)
-		    
-		Cond expr stmt		-> do
-		    exptype <- inferExp expr
-		    when (exptype /= Bool) (fail $ "Conditional expression not of boolean type: " ++ (show exptype))
-		    checkStm stmt
-		    return ()
-		    
+		Cond expr stmt		-> undefined
 		CondElse  expr ifs els  -> undefined 
 		While expr stmt		-> undefined
 		SExp exprs		-> do
