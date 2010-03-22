@@ -1,8 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module TypeChecker where
 
-import AbsCPP
-import PrintCPP
+import Absjavalette
+import Printjavalette
 import ErrM
 
 import Control.Monad
@@ -23,12 +23,8 @@ type TC a = TCM Err a
 
 -- Replace [(from,to)]
 data Env = Env { -- all the type signatures from all the functions
-                      signatures :: Map CIdent ([Type], Type)
-                 -- a stack of contexts, one per scope 
-                 -- this is NEVER empty. if empty then it always should contain
-                 -- Map.empty (making lookups never crash)
-                    , contexts :: [Map CIdent Type]
-		-- local return type for current function definition 
+                      signatures :: Map Ident ([Type], Type)
+                    , contexts :: [Map Ident Type]
 		    , returnType :: Type }
 
 -- Create an empty environment
@@ -52,7 +48,7 @@ popContext = do
         modify (\e -> e { contexts = tail ctxStack })
 
 -- add a variable to current context and fail if it already exists
-addVar :: CIdent -> Type -> TC ()
+addVar :: Ident -> Type -> TC ()
 addVar n t = do
         env <- get
         let (c:cs) = contexts env
@@ -62,8 +58,8 @@ addVar n t = do
         put env'
 
 -- add a function definition
-addDef :: Def -> TC ()
-addDef (FunctionDef retType n as _) = do
+addDef :: TopDef -> TC ()
+addDef (FnDef retType n as _) = do
 	sigs <- gets signatures 
 	let ts = map argToType as
 	let sigs' = Map.insert n (ts,retType) sigs
@@ -73,7 +69,7 @@ addDef (FunctionDef retType n as _) = do
 	argToType (Arg t _) = t
 	
 -- Look for a variable in allall the contextss
-lookVar :: CIdent -> TC Type
+lookVar :: Ident -> TC Type
 lookVar n = do
         ctxs <- gets contexts 
         rtrn (catMaybes ((map (Map.lookup n) ctxs)))
@@ -84,111 +80,64 @@ lookVar n = do
         rtrn (x:xs) = return x
 
 -- Look for a function in the signatures
-lookFun :: CIdent -> TC ([Type], Type)
+lookFun :: Ident -> TC ([Type], Type)
 lookFun fName = do
 	mbtSig <- gets (Map.lookup fName. signatures)
 	when (isNothing mbtSig) (fail $ "Unknown function name")
 	return $ fromJust mbtSig
 	
 
-inferExp :: Exp -> TC Type
-inferExp expr = do
+inferExp :: Expr -> TC Type
+inferExp expr = undefined 
+{-	
+	do
 	case expr of
-		EDouble _           -> return TDouble
-		EInt _              -> return TInt
-		EBoolean _          -> return TBool
-		EIdent name         -> lookVar name 
-		EFunCall fName args -> do  
-				(argList,retType)<- lookFun fName --([Type],Type)
-				inferredTypes <- mapM inferExp args -- [Type] 
-				if argList == inferredTypes 
-					then return TBool 
-					else fail $ "Arguments does not match: " ++ (show inferredTypes) ++ "," ++ (show argList)
-				return retType 
-		EPostInc exp        -> checkUnaryOperation exp
-		EPostDec exp        -> checkUnaryOperation exp
-		EPreInc  exp        -> checkUnaryOperation exp
-		EPreDec  exp        -> checkUnaryOperation exp
-		EMul e0 e1          -> checkBinaryOperation e0 e1
-		EDiv e0 e1          -> checkBinaryOperation e0 e1
-		EPlus e0 e1         -> checkBinaryOperation e0 e1
-		EMinus e0 e1        -> checkBinaryOperation e0 e1
-		EGT e0 e1           -> checkComparator e0 e1
-		ELT e0 e1           -> checkComparator e0 e1 
-		ELEq e0 e1          -> checkComparator e0 e1
-		EGEq e0 e1          -> checkComparator e0 e1
-		EEqual e0 e1        -> checkComparator e0 e1
-		ENEqual e0 e1       -> checkComparator e0 e1
-		ELAnd e0 e1         -> checkBoolean e0 e1 
-		ELOr e0 e1          -> checkBoolean e0 e1
-		EAss e0 e1          -> checkBinaryOperation e0 e1  
+		undefined
+-}	
 
 -- Check unary numeric operations such as ++ (exp)
-checkUnaryOperation :: Exp -> TC Type
+checkUnaryOperation :: Expr -> TC Type
 checkUnaryOperation exp = do
 		iType <- inferExp exp
-		if elem iType [TInt, TDouble] then return iType else fail $ (show iType) ++ "invalid expression" 
+		if elem iType [Int, Doub] 
+			then return iType 
+			else fail $ (show iType) ++ "invalid expression" 
 
 -- Check binary numeric operations 
-checkBinaryOperation :: Exp -> Exp -> TC Type
+checkBinaryOperation :: Expr -> Expr -> TC Type
 checkBinaryOperation e0 e1 = do 
 		iType0 <- inferExp e0
 		iType1 <- inferExp e1
-		if (iType0 == iType1 && iType0 /= TBool && iType0 /= TVoid)
+		if (iType0 == iType1 && iType0 /= Bool && iType0 /= Void)
 			then return iType0
 			else fail $ "Arithmetic operation have different argument types: " 	++ (show iType0) ++ "," ++ (show iType1) 
 
-checkComparator :: Exp -> Exp -> TC Type
+checkComparator :: Expr -> Expr -> TC Type
 checkComparator e0 e1 = do
 		iType0 <- inferExp e0
 		iType1 <- inferExp e1
 		if iType0 == iType1
-			then return TBool
+			then return Bool
 			else fail $ "Cannot compare " ++ (show iType0) ++ " with " ++ (show iType1)
 		
-checkBoolean :: Exp -> Exp -> TC Type
+checkBoolean :: Expr -> Expr -> TC Type
 checkBoolean e0 e1 = do
 		iType0 <- inferExp e0
 		iType1 <- inferExp e1
-		if iType0 == TBool && iType1 == TBool
-			then return TBool
+		if iType0 == Bool && iType1 == Bool
+			then return Bool
 			else fail $ "Boolean operation has different argument types: " ++ (show iType0) ++ "," ++ (show iType1)
 
-checkStm :: Stm -> TC ()
-checkStm stm = do
+checkStm :: Stmt -> TC ()
+checkStm stm = undefined
+{-	
+	do
 	case stm of
-		SDeclaration (ArgumentDecl t idList) -> do
-						mapM_ ((flip  addVar) t) idList
-		SDeclaration (ArgumentDecl2 t n expr)-> do
-						addVar n t
-						exprType <- inferExp expr
-						when (exprType /= t) (fail $ "Declaration type does not match: " ++ (show t) ++ "," ++ (show exprType))
-						return ()
-		SBlock stmList -> do
-				pushContext
-				mapM_ checkStm stmList
-				popContext
-		SWhile expr stm -> do
-				exprType <- inferExp expr
-				when (exprType /= TBool) (fail $ "While condition " ++ (show expr) ++ " is not Bool")
-				checkStm stm 
-				return ()
-		SIfElse expr lhs rhs -> do 
-				exprType <- inferExp expr
-				when (exprType /= TBool) (fail $ "Expression passed to while statement does not evaluate to Bool")
-				checkStm lhs
-				checkStm rhs
-		SReturn expr -> do 
-				expType <- inferExp expr
-				retType <- gets returnType
-				if (expType == retType) then return () else fail "return type error"
-		SExp expr -> do
-				inferExp expr
-				return()
+		undefined	
+-}
 
-
-checkDef :: Def -> TC ()
-checkDef (FunctionDef retType name args stms) = do
+checkDef :: TopDef -> TC ()
+checkDef (FnDef retType name args stms) = do
 	pushContext
 	modify (\e -> e { returnType = retType } )
 	mapM_ addArgs args  
