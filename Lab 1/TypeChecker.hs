@@ -114,12 +114,8 @@ inferExp expr = do
 			exprVal <- inferExp expr
 			when (exprVal /= Bool) (fail $ "Not expression requires Bool. " ++ (show exprVal) ++ " was passed.")
 			return exprVal			
-		EMul e0 op e1	-> do
-			typ0 <- inferExp e0
-			typ1 <- inferExp e1
-			when (typ0 /= typ1 || (typ0 /= Int && typ0 /= Doub)) (fail $ "Trying to multiply with operator " ++ (show op) ++ ", on expressions of type " ++ (show typ0) ++ " and " ++ (show typ1))
-			return typ0
-		EAdd e0 op e1	-> undefined
+		EMul e0 op e1	-> checkBinaryOperation e0 e1
+		EAdd e0 op e1	-> checkBinaryOperation e0 e1
 		ERel e0 op e1	-> undefined
 		EAnd e0 e1	-> checkBoolean e0 e1
 		EOr e0 e1	-> checkBoolean e0 e1
