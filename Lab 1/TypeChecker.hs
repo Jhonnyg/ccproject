@@ -120,9 +120,10 @@ inferExp expr = do
 			typ0 <- inferExp e0
 			typ1 <- inferExp e1
 			when (typ0 /= typ1) (fail $ "Trying to compare two expressions with different type (" ++ (show typ0) ++ " and " ++ (show typ1) ++ ")")
-			return typ0
+			return Bool
 		ERel e0 op e1	-> do
 			checkBinaryOperation e0 e1
+			return Bool
 		EAnd e0 e1	-> checkBoolean e0 e1
 		EOr e0 e1	-> checkBoolean e0 e1
 		
