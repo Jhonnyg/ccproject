@@ -1,7 +1,8 @@
 
-void main()
+int main()
 {
-  while (1);
+  double t;
+  t--;
 
 	return;
 }
