@@ -88,12 +88,11 @@ lookFun fName = do
 	
 
 inferExp :: Expr -> TC Type
-inferExp expr = undefined 
-{-	
-	do
+inferExp expr = do
 	case expr of
-		undefined
--}	
+		EVar name 	-> undefined
+		ELitInt i 	-> undefined --Int i
+		ELitDoub d 	-> undefined --Doub d
 
 -- Check unary numeric operations such as ++ (exp)
 checkUnaryOperation :: Expr -> TC Type
@@ -110,7 +109,7 @@ checkBinaryOperation e0 e1 = do
 		iType1 <- inferExp e1
 		if (iType0 == iType1 && iType0 /= Bool && iType0 /= Void)
 			then return iType0
-			else fail $ "Arithmetic operation have different argument types: " 	++ (show iType0) ++ "," ++ (show iType1) 
+			else fail $ "Arithmetic operation have different argument types: " ++ (show iType0) ++ "," ++ (show iType1) 
 
 checkComparator :: Expr -> Expr -> TC Type
 checkComparator e0 e1 = do
