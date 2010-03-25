@@ -97,42 +97,43 @@ lookFun fName = do
 inferExp :: Expr -> TC Type
 inferExp expr = do
 	case expr of
-		EVar name 	-> do
+		EVar name 		-> do
 			varName <- lookVar name
 			return varName
-		ELitInt i 	-> return Int 
-		ELitDoub d 	-> return Doub
-		ELitTrue	-> return Bool
-		ELitFalse	-> return Bool
-		EApp n expList 	-> do
+		ELitInt i 		-> return Int 
+		ELitDoub d 		-> return Doub
+		ELitTrue		-> return Bool
+		ELitFalse		-> return Bool
+		EApp n expList 		-> do
 			(argListTypes,returnType) <- lookFun n
 			inferredTypes <- mapM inferExp expList
 			when (inferredTypes /= argListTypes) (fail $ "Function " ++ (show n) ++ " passed with incorrect argument types")
 			return returnType
-		EAppS n str	-> do
+		EAppS (Ident "printString") str -> return Void
+		EAppS n str		-> do
 			(argListTypes,returnType) <- lookFun n
 			when (length argListTypes /= 1) (fail $ "Expected 1 parameter for function " ++ (show n)) -- LOL STRING
 			return returnType
-		Neg expr	-> do
+		Neg expr		-> do
 			exprVal <- inferExp expr
 			when (exprVal /= Int && exprVal /= Doub) (fail $ "Negation requires either Int or Double. " ++ (show exprVal) ++ " was passed.")
 			return exprVal			
-		Not expr	-> do
+		Not expr		-> do
 			exprVal <- inferExp expr
 			when (exprVal /= Bool) (fail $ "Not expression requires Bool. " ++ (show exprVal) ++ " was passed.")
 			return exprVal			
-		EMul e0 op e1	-> checkBinaryOperation e0 e1
-		EAdd e0 op e1	-> checkBinaryOperation e0 e1
-		ERel e0 (EQU) e1 -> do
+		EMul e0 op e1		-> checkBinaryOperation e0 e1
+		EAdd e0 op e1		-> checkBinaryOperation e0 e1
+		ERel e0 (EQU) e1 	-> do
 			typ0 <- inferExp e0
 			typ1 <- inferExp e1
 			when (typ0 /= typ1) (fail $ "Trying to compare two expressions with different type (" ++ (show typ0) ++ " and " ++ (show typ1) ++ ")")
 			return Bool
-		ERel e0 op e1	-> do
+		ERel e0 op e1		-> do
 			checkBinaryOperation e0 e1
 			return Bool
-		EAnd e0 e1	-> checkBoolean e0 e1
-		EOr e0 e1	-> checkBoolean e0 e1
+		EAnd e0 e1		-> checkBoolean e0 e1
+		EOr e0 e1		-> checkBoolean e0 e1
 		
 
 -- Check unary numeric operations such as ++ (exp)
@@ -171,9 +172,13 @@ checkBoolean e0 e1 = do
 checkStm :: Stmt -> TC ()
 checkStm stm = do
 	case stm of
+		SType t stmt 		-> undefined
+					
 		Empty 			-> return ()
 		BStmt (Block stmts) 	-> do
+			pushContext
 			mapM_ (checkStm) stmts
+			popContext
 			
 		Decl  t itmList		-> do
 		  	mapM_ (addItem t) itmList
@@ -187,8 +192,6 @@ checkStm stm = do
 			    
 			  addItem t (NoInit name) = addVar name t
 			
-		--NoInit name		-> undefined i think this is used in interpreter to flag wheter or not a variable is intiated with a value or not!
-		--Init name expr	-> undefined
 		Ass name epxr		-> do
 		  vartype <- lookVar name
 		  exptype <- inferExp epxr
