@@ -27,9 +27,14 @@ data Env = Env { -- all the type signatures from all the functions
                     , contexts :: [Map Ident Type]
 		    , returnType :: Type }
 
+stdFuncs = [(Ident "printInt", ([Int],Void)),
+	    (Ident "readInt", ([],Int)),
+	    (Ident "printDouble", ([Doub],Void)),
+	    (Ident "readDouble", ([],Doub))]	
+
 -- Create an empty environment
 emptyEnv :: Env
-emptyEnv = Env { signatures = Map.empty
+emptyEnv = Env { signatures = Map.fromList stdFuncs
                , contexts = [Map.empty]
 	       , returnType = undefined }
 

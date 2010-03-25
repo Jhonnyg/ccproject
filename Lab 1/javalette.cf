@@ -14,7 +14,7 @@ separator  Arg "," ;
 
 -- statements ----------------------------------------------
 
-internal SType. ::= Type Stmt; 
+internal SType. Stmt ::= Type Stmt; 
 
 Block.     Block ::= "{" [Stmt] "}" ;
 
