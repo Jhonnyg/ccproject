@@ -38,7 +38,7 @@ emptyEnv = Env { signatures = Map.fromList stdFuncs
                , contexts = [Map.empty]
 	       , returnType = undefined }
 
-typecheck :: Program -> Err ()
+typecheck :: Program -> Err Program
 typecheck p = (evalStateT . unTCM) (checkTree p) emptyEnv
 
 -- place one empty context at the top of the stack
@@ -180,86 +180,87 @@ checkStm stm = do
 			return stm
 			
 		Decl  t itmList		-> do
-		  	mapM_ (addItem t) itmList
-			return SType t stm
+			mapM_ (addItem t) itmList
+			return (SType t stm)
 			where
-			  addItem :: Type -> Item -> TC ()
-			  addItem t (Init name expr) = do
-			    exprtype <- inferExp expr
-			    when (t /= exprtype) (fail $ "Trying to assign variable " ++ (show name) ++ " (which has type " ++ (show t) ++ ") with an expression of type " ++ (show exprtype))
-			    addVar name t
-			    
-			  addItem t (NoInit name) = addVar name t
+				addItem :: Type -> Item -> TC ()
+				addItem t (Init name expr) = do
+					exprtype <- inferExp expr
+					when (t /= exprtype) (fail $ "Trying to assign variable " ++ (show name) ++ " (which has type " ++ (show t) ++ ") with an expression of type " ++ (show exprtype))
+					addVar name t
+ 
+				addItem t (NoInit name) = addVar name t
 			
 		Ass name epxr		-> do
 		  vartype <- lookVar name
 		  exptype <- inferExp epxr
 		  if vartype == exptype
-		    then return SType vartype stm
+		    then return (SType vartype stm)
 		    else fail $ "Trying to assign " ++ (show name) ++ " (which has type " ++ (show vartype) ++ ") with an expression of type " ++ (show exptype)
 		    
 		Incr name		-> do
 		  typ <- lookVar name
 		  if typ == Int
-		    then return SType typ stm
+		    then return (SType typ stm)
 		    else fail $ "Trying to increment " ++ (show name) ++ ", which has type " ++ (show typ)
 		    
 		Decr name		-> do
 		  typ <- lookVar name
 		  if typ == Int
-		    then return ()
+		    then return (SType typ stm)
 		    else fail $ "Trying to decrement " ++ (show name) ++ ", which has type " ++ (show typ)
 		    
 		Ret  expr     		-> do
 		  rettype <- gets returnType
 		  exptype <- inferExp expr
 		  if rettype == exptype
-		    then return ()
+		    then return (SType rettype stm)
 		    else fail $ "Trying to return with type " ++ (show exptype) ++ " in a function with type " ++ (show rettype)
 		  
 		VRet     		-> do
 		  rettype <- gets returnType
 		  if rettype == Void
-		    then return ()
+		    then return (SType Void stm)
 		    else fail $ "Trying to return void in a function of type: " ++ (show rettype)
 		    
 		Cond expr stmt		-> do
 		  exptype <- inferExp expr
 		  when (exptype /= Bool) (fail $ "Conditional expression for if-else-statement  not of boolean type: " ++ (show exptype))
 		  checkStm stmt
-		  return ()
+		  return stm
 		    
 		CondElse  expr ifs els  -> do
 		  exptype <- inferExp expr
 		  when (exptype /= Bool) (fail $ "Conditional expression for if-statement not of boolean type: " ++ (show exptype))
 		  checkStm ifs
 		  checkStm els
-		  return ()
+		  return stm
 		  
 		While expr stmt		->   do
   		  exptype <- inferExp expr
   		  when (exptype /= Bool) (fail $ "Conditional expression for while-statement not of boolean type: " ++ (show exptype))
   		  checkStm stmt
-  		  return ()
+  		  return stm
   		  
 		SExp exprs		-> do
-		  inferExp exprs
-		  return ()
+		  typ <- inferExp exprs
+		  return (SType typ stm)
 		
 
-checkDef :: TopDef -> TC ()
+checkDef :: TopDef -> TC TopDef
 checkDef (FnDef retType name args (Block stms)) = do
 	pushContext
 	modify (\e -> e { returnType = retType } )
 	mapM_ addArgs args  
-	mapM checkStm stms
+	newstms <- mapM checkStm stms
 	popContext
-	return()
+	return (FnDef retType name args (Block newstms))
 	where
 	addArgs :: Arg -> TC ()
 	addArgs (Arg t i) = addVar i t
 
+checkTree :: Program -> TC Program
 checkTree (Program defs) = do
 	mapM addDef defs
-	mapM checkDef defs
-	return ()
+	newdefs <- mapM checkDef defs
+	return (Program newdefs)

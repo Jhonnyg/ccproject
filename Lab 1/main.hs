@@ -6,6 +6,8 @@ import Lexjavalette
 import Parjavalette
 import ErrM
 
+import Printjavalette
+
 import TypeChecker 
 
 
@@ -18,7 +20,9 @@ check s = case pProgram (myLexer s) of
                           Bad err -> do putStrLn "TYPE ERROR"
                                         putStrLn err
                                         exitFailure 
-                          Ok _    -> putStrLn "OK"
+                          Ok tree' -> do
+																					putStrLn $ show tree'
+																					putStrLn "OK"
 
 main :: IO ()
 main = do args <- getArgs
