@@ -168,12 +168,13 @@ checkBoolean e0 e1 = do
 			then return Bool
 			else fail $ "Boolean operation has different argument types: " ++ (show iType0) ++ "," ++ (show iType1)
 
-checkStm :: Stmt -> TC ()
+checkStm :: Stmt -> TC Stmt
 checkStm stm = do
 	case stm of
-		Empty 			-> return ()
+		Empty 			-> return Empty
 		BStmt (Block stmts) 	-> do
 			mapM_ (checkStm) stmts
+			return stm
 			
 		Decl  t itmList		-> do
 		  	mapM_ (addItem t) itmList
