@@ -67,6 +67,8 @@ addDef (FnDef retType n as _) = do
 	where 
 	argToType :: Arg -> Type
 	argToType (Arg t _) = t
+
+--addDef (FnDef Void printInt 
 	
 -- Look for a variable in allall the contextss
 lookVar :: Ident -> TC Type
