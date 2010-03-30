@@ -37,8 +37,8 @@ emptyEnv = Env { signatures = Map.fromList stdFuncs
                , contexts = [Map.empty]
 	       , returnType = undefined }
 
-typecheck :: Program -> Err ()
-typecheck p = (evalStateT . unTCM) (checkTree p) emptyEnv
+compile :: Program -> Err ()
+compile p = (evalStateT . unTCM) (checkTree p) emptyEnv
 
 -- place one empty context at the top of the stack
 pushContext :: TC ()
@@ -172,81 +172,29 @@ checkStm :: Stmt -> TC ()
 checkStm stm = do
 	case stm of
 		SType t stmt 		-> undefined
-					
-		Empty 			-> return ()
-		BStmt (Block stmts) 	-> do
-			pushContext
-			mapM_ (checkStm) stmts
-			popContext
+		Empty 			-> undefined
+		BStmt (Block stmts) 	-> undefined
 			
-		Decl  t itmList		-> do
-		  	mapM_ (addItem t) itmList
-			return ()
-			where
-			  addItem :: Type -> Item -> TC ()
-			  addItem t (Init name expr) = do
-			    exprtype <- inferExp expr
-			    when (t /= exprtype) (fail $ "Trying to assign variable " ++ (show name) ++ " (which has type " ++ (show t) ++ ") with an expression of type " ++ (show exprtype))
-			    addVar name t
-			    
-			  addItem t (NoInit name) = addVar name t
-			
-		Ass name epxr		-> do
-		  vartype <- lookVar name
-		  exptype <- inferExp epxr
-		  if vartype == exptype
-		    then return ()
-		    else fail $ "Trying to assign " ++ (show name) ++ " (which has type " ++ (show vartype) ++ ") with an expression of type " ++ (show exptype)
-		    
-		Incr name		-> do
-		  typ <- lookVar name
-		  if typ == Int
-		    then return ()
-		    else fail $ "Trying to increment " ++ (show name) ++ ", which has type " ++ (show typ)
-		    
-		Decr name		-> do
-		  typ <- lookVar name
-		  if typ == Int
-		    then return ()
-		    else fail $ "Trying to decrement " ++ (show name) ++ ", which has type " ++ (show typ)
-		    
-		Ret  expr     		-> do
-		  rettype <- gets returnType
-		  exptype <- inferExp expr
-		  if rettype == exptype
-		    then return ()
-		    else fail $ "Trying to return with type " ++ (show exptype) ++ " in a function with type " ++ (show rettype)
-		  
-		VRet     		-> do
-		  rettype <- gets returnType
-		  if rettype == Void
-		    then return ()
-		    else fail $ "Trying to return void in a function of type: " ++ (show rettype)
-		    
-		Cond expr stmt		-> do
-		  exptype <- inferExp expr
-		  when (exptype /= Bool) (fail $ "Conditional expression for if-else-statement  not of boolean type: " ++ (show exptype))
-		  checkStm stmt
-		  return ()
-		    
-		CondElse  expr ifs els  -> do
-		  exptype <- inferExp expr
-		  when (exptype /= Bool) (fail $ "Conditional expression for if-statement not of boolean type: " ++ (show exptype))
-		  checkStm ifs
-		  checkStm els
-		  return ()
-		  
-		While expr stmt		->   do
-  		  exptype <- inferExp expr
-  		  when (exptype /= Bool) (fail $ "Conditional expression for while-statement not of boolean type: " ++ (show exptype))
-  		  checkStm stmt
-  		  return ()
-  		  
-		SExp exprs		-> do
-		  inferExp exprs
-		  return ()
+		Decl  t itmList		-> undefined
+		  			
+		Ass name epxr		-> undefined
+		     
+		Incr name		-> undefined
+		   
+		Decr name		-> undefined
+		   
+		Ret  expr     		-> undefined
+		 
+		VRet     		-> undefined
+		   
+		Cond expr stmt		-> undefined
+		   
+		CondElse  expr ifs els  -> undefined
+		 
+		While expr stmt		-> undefined
+  		 
+		SExp exprs		-> undefined
 		
-
 checkDef :: TopDef -> TC ()
 checkDef (FnDef retType name args (Block stms)) = do
 	pushContext
