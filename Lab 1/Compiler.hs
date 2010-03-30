@@ -28,6 +28,8 @@ data JasminInstr =
 	| StartMethod String 
 	| EndMethod
 	deriving (Show)
+
+
 --data JasminProgram = [JasminInstr]
 -- Replace [(from,to)]
 data Env = Env { signatures :: Map Ident Type,
@@ -150,8 +152,8 @@ lookFun fName = do
 	return $ fromJust mbtSig
 	
 -}
-inferExp :: Expr -> CP Type
-inferExp expr = do
+compileExp :: Expr -> CP ()
+compileExp expr = do
 	case expr of
 		EVar name 		-> undefined
 		ELitInt i 		-> undefined 
@@ -162,6 +164,8 @@ inferExp expr = do
 		EAppS (Ident "printString") str -> undefined
 		EAppS n str		-> undefined
 		Neg expr		-> undefined
+			-- exprVal <- compileExp expr
+			-- push - exprVal to stack
 		Not expr		-> undefined
 		EMul e0 op e1		-> undefined
 		EAdd e0 op e1		-> undefined
