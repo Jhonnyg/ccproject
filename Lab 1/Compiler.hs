@@ -25,6 +25,8 @@ type Label = Integer
 data JasminInstr = 
 	VReturn
 	| Return
+	| StartMethod String 
+	| EndMethod
 	| Goto Label
 	deriving (Show)
 --data JasminProgram = [JasminInstr]
@@ -43,7 +45,7 @@ data Env = Env { signatures :: Map Ident Type,
 putInstruction :: JasminInstr -> CP ()
 putInstruction instr = do
 	code_stack <- gets codeStack
-	modify (\e -> e { codeStack = instr : code_stack })
+	modify (\e -> e { codeStack = code_stack ++ [instr] })
 
 clearContexSpec :: CP ()
 clearContexSpec = do
@@ -78,7 +80,13 @@ emptyEnv name = Env { signatures = Map.empty,--Map.fromList stdFuncs, -- add our
 								 programCode = [],
 								 compiledCode = [".source " ++ name ++ ".j",
 								                ".class  public " ++ name,
-								                ".super  java/lang/Object"] }
+								                ".super  java/lang/Object",
+																"; standard initializer",
+																".method public <init>()V",
+																"   aload_0",
+																"   invokenonvirtual java/lang/Object/<init>()V",
+																"   return",
+																".end method"] }
 
 compile :: Program -> Err [String]
 compile p = (evalStateT . unCPM) (compileTree p) $ emptyEnv "MyJavaletteClass"
@@ -199,10 +207,18 @@ addVar t n = do
 
 -- iterate all the statements in a function definition and compile them
 compileDef :: TopDef -> CP ()
-compileDef (FnDef retType name args (Block stms)) = do
+compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	clearContexSpec
+	-- put method instructions!
+	putInstruction (StartMethod name)
+	
 	mapM_ (addArgs) args
 	mapM_ (compileStm) stms
+	
+	-- TODO: add stack information here!!!
+	
+	-- put method end instruction
+	putInstruction (EndMethod)
 	
 	code_stack <- gets codeStack
 	prog_code <- gets programCode
@@ -217,6 +233,8 @@ transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
 		VReturn -> "return"
+		StartMethod name -> ".method public static " ++ name ++ "()V"
+		EndMethod -> ".end method"
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad

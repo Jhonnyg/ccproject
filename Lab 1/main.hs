@@ -22,14 +22,14 @@ check s = case pProgram (myLexer s) of
                                         putStrLn err
                                         exitFailure 
                           Ok tree' -> do
-																					putStrLn "Typecheck: OK!"
+																					--putStrLn "Typecheck: OK!"
 																					case compile tree' of
 																						Bad err -> do
 																													putStrLn "COMPILE ERROR"
 																													putStrLn err
 																													exitFailure
 																						Ok prg    -> do
-																														putStrLn "Compile: OK"
+																														--putStrLn "Compile: OK"
 																														mapM_ (putStrLn) prg
 
 main :: IO ()
