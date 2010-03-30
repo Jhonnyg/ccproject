@@ -8,7 +8,8 @@ import ErrM
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Trans
-import Control.Monad (liftM2)
+
+import Data.Maybe (fromJust, catMaybes, isNothing)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -168,20 +169,19 @@ checkBoolean e0 e1 = do
 			then return Bool
 			else fail $ "Boolean operation has different argument types: " ++ (show iType0) ++ "," ++ (show iType1)
 
-checkStm :: Stmt -> TC ()
+checkStm :: Stmt -> TC Stmt
 checkStm stm = do
 	case stm of
-		SType t stmt 		-> undefined
-					
-		Empty 			-> return ()
+		Empty 			-> return Empty
 		BStmt (Block stmts) 	-> do
 			pushContext
 			mapM_ (checkStm) stmts
 			popContext
+			return stm
 			
 		Decl  t itmList		-> do
 		  	mapM_ (addItem t) itmList
-			return ()
+			return SType t stm
 			where
 			  addItem :: Type -> Item -> TC ()
 			  addItem t (Init name expr) = do
@@ -195,13 +195,13 @@ checkStm stm = do
 		  vartype <- lookVar name
 		  exptype <- inferExp epxr
 		  if vartype == exptype
-		    then return ()
+		    then return SType vartype stm
 		    else fail $ "Trying to assign " ++ (show name) ++ " (which has type " ++ (show vartype) ++ ") with an expression of type " ++ (show exptype)
 		    
 		Incr name		-> do
 		  typ <- lookVar name
 		  if typ == Int
-		    then return ()
+		    then return SType typ stm
 		    else fail $ "Trying to increment " ++ (show name) ++ ", which has type " ++ (show typ)
 		    
 		Decr name		-> do
@@ -247,40 +247,14 @@ checkStm stm = do
 		  return ()
 		
 
-checkDefReturn :: TopDef -> TC ()
-checkDefReturn (FnDef Void _ _ _) = return ()
-checkDefReturn fun@(FnDef rettype n _ (Block stms)) = do
-	let has_return = any checkStmReturn stms
-	if (has_return)
-		then return ()
-		else fail $ "Function " ++ (show n) ++ " does not return!"
-
-checkStmReturn :: Stmt -> Bool
-checkStmReturn (Ret _)                = True
-checkStmReturn (VRet)                 = True
-checkStmReturn (BStmt (Block stms))   = any checkStmReturn stms
-checkStmReturn (Cond exp stm)         = case checkExpBool exp of
-																					True  -> checkStmReturn stm
-																					False -> False
-checkStmReturn (CondElse exp stm1 stm2) = (checkStmReturn stm1) && (checkStmReturn stm2)
-checkStmReturn _ = False
-
-checkExpBool :: Expr -> Bool
-checkExpBool ELitTrue     = True
-checkExpBool ELitFalse    = False
-checkExpBool (EAnd e1 e2) = (checkExpBool e1) && (checkExpBool e2)
-checkExpBool (EOr e1 e2)  = (checkExpBool e1) || (checkExpBool e2)
-checkExpBool _            = False
-
-checkDef :: TopDef -> TC TopDef
-checkDef fun@(FnDef retType name args (Block stms)) = do
+checkDef :: TopDef -> TC ()
+checkDef (FnDef retType name args (Block stms)) = do
 	pushContext
 	modify (\e -> e { returnType = retType } )
 	mapM_ addArgs args  
 	mapM checkStm stms
 	popContext
-	checkDefReturn fun
-	return (FnDef retType name args (Block newstms))
+	return()
 	where
 	addArgs :: Arg -> TC ()
 	addArgs (Arg t i) = addVar i t
