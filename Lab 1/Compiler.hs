@@ -164,7 +164,7 @@ compileDef (FnDef retType name args (Block stms)) = undefined
 	addArgs (Arg t i) = addVar i t
 -}
 
-checkTree (Program defs) = do
+compileTree (Program defs) = do
 	--mapM compileDef defs
 	--mapM compileDef defs
 	return ()
