@@ -20,16 +20,38 @@ newtype CPM m a = CPM { unCPM :: StateT Env m a }
 -- Type alias to increase readability
 type CP a = CPM Err a
 
-data JasminInstr = Push 
-
+data JasminInstr = 
+	VReturn
+	| Return
+	deriving (Show)
+--data JasminProgram = [JasminInstr]
 -- Replace [(from,to)]
 data Env = Env { signatures :: Map Ident Type,
+		 variables :: [Map Ident (Integer, Type)],
 		 nextVarIndex :: Integer,
 		 nextLabelIndex :: Integer,
 		 currentStackDepth :: Integer,
 		 maxStackDepth :: Integer,
-		 codeStack :: [JasminInstr] }
+		 codeStack :: [JasminInstr],
+		 programCode :: [[JasminInstr]],
+		 compiledCode :: [String] }
 
+
+putInstruction :: JasminInstr -> CP ()
+putInstruction instr = do
+	code_stack <- gets codeStack
+	modify (\e -> e { codeStack = instr : code_stack })
+
+clearContexSpec :: CP ()
+clearContexSpec = do
+	program_code <- gets programCode
+	code_stack <- gets codeStack
+	modify (\e -> e { variables = [Map.empty],
+										nextVarIndex = 0,
+	                  currentStackDepth = 0,
+	                  maxStackDepth = 0,
+	                  codeStack = [],
+	                  programCode = code_stack : program_code})
 
 {- -- all the type signatures from all the functions
                       signatures :: Map Ident ([Type], Type)
@@ -42,13 +64,21 @@ stdFuncs = [(Ident "printInt", ([Int],Void)),
 	    (Ident "readDouble", ([],Doub))]	
 
 -- Create an empty environment
-emptyEnv :: Env
-emptyEnv = Env { signatures = Map.fromList stdFuncs
-               , contexts = [Map.empty]
-	       , returnType = undefined }
+emptyEnv :: String -> Env
+emptyEnv name = Env { signatures = Map.empty,--Map.fromList stdFuncs, -- add our standard functions here from start?
+                 variables = [Map.empty],
+								 nextVarIndex = 0,
+								 nextLabelIndex = 0,
+								 currentStackDepth = 0,
+								 maxStackDepth = 0,
+								 codeStack = [],
+								 programCode = [],
+								 compiledCode = [".source " ++ name ++ ".j",
+								                ".class  public " ++ name,
+								                ".super  java/lang/Object"] }
 
-compile :: Program -> Err ()
-compile p = (evalStateT . unCPM) (checkTree p) emptyEnv
+compile :: Program -> Err [String]
+compile p = (evalStateT . unCPM) (compileTree p) $ emptyEnv "MyJavaletteClass"
 
 -- place one empty context at the top of the stack
 {-
@@ -126,8 +156,9 @@ inferExp expr = do
 		
 compileStm :: Stmt -> CP ()
 compileStm stm = do
+	--fail (show stm)
 	case stm of
-		SType t stmt 		-> undefined
+		SType t stmt 		-> compileStm stmt
 		Empty 			-> undefined
 		BStmt (Block stmts) 	-> undefined
 			
@@ -141,7 +172,7 @@ compileStm stm = do
 		   
 		Ret  expr     		-> undefined
 		 
-		VRet     		-> undefined
+		VRet     		-> putInstruction VReturn
 		   
 		Cond expr stmt		-> undefined
 		   
@@ -150,22 +181,51 @@ compileStm stm = do
 		While expr stmt		-> undefined
   		 
 		SExp exprs		-> undefined
-		
+
+-- add a variable to current context and fail if it already exists
+addVar :: Type -> Ident -> CP ()
+addVar t n = do
+	env <- get
+	let (v:vs) = variables env
+	new_var_index <- gets nextVarIndex
+	when (Map.member n v) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top variable context"
+	let v' = Map.insert n (new_var_index, t) v
+	let env' = env { variables = (v' : vs), nextVarIndex = new_var_index + 1 }
+	put env'
+
 compileDef :: TopDef -> CP ()
-compileDef (FnDef retType name args (Block stms)) = undefined
+compileDef (FnDef retType name args (Block stms)) = do
+	clearContexSpec
+	mapM_ (addArgs) args
+	mapM_ (compileStm) stms
+	
+	code_stack <- gets codeStack
+	prog_code <- gets programCode
+	modify (\e -> e { programCode = prog_code ++ [code_stack] })
 
-{-	pushContext
-	modify (\e -> e { returnType = retType } )
-	mapM_ addArgs args  
-	mapM checkStm stms
-	popContext
-	return()
 	where
-	addArgs :: Arg -> TC ()
-	addArgs (Arg t i) = addVar i t
--}
+		addArgs (Arg t i) = addVar t i
+	
 
-checkTree (Program defs) = do
-	--mapM compileDef defs
-	--mapM compileDef defs
-	return ()
+transJasmine :: JasminInstr -> String
+transJasmine instr = do
+	case instr of 
+		VReturn -> "return"
+		otherwise -> "undefined"
+
+transJasmineBlock :: [JasminInstr] -> CP ()
+transJasmineBlock context = do
+	let str_src = map transJasmine context
+	compiled_code <- gets compiledCode
+	modify (\e -> e { compiledCode = compiled_code ++ str_src })
+
+compileTree (Program defs) = do
+	mapM compileDef defs
+	
+	pgm_code <- gets programCode
+	
+	--let str_src = map (map transJasmine) pgm_code
+	mapM_ (transJasmineBlock) pgm_code
+	compiled_code <- gets compiledCode
+	
+	return $ compiled_code
