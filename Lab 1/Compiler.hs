@@ -25,6 +25,8 @@ data JasminInstr =
 	| Return
 	| Goto String
 	| Label Integer
+	| StartMethod String 
+	| EndMethod
 	deriving (Show)
 --data JasminProgram = [JasminInstr]
 -- Replace [(from,to)]
@@ -48,7 +50,7 @@ getLabel = do
 putInstruction :: JasminInstr -> CP ()
 putInstruction instr = do
 	code_stack <- gets codeStack
-	modify (\e -> e { codeStack = instr : code_stack })
+	modify (\e -> e { codeStack = code_stack ++ [instr] })
 
 clearContexSpec :: CP ()
 clearContexSpec = do
@@ -83,7 +85,13 @@ emptyEnv name = Env { signatures = Map.empty,--Map.fromList stdFuncs, -- add our
 								 programCode = [],
 								 compiledCode = [".source " ++ name ++ ".j",
 								                ".class  public " ++ name,
-								                ".super  java/lang/Object"] }
+								                ".super  java/lang/Object",
+																"; standard initializer",
+																".method public <init>()V",
+																"   aload_0",
+																"   invokenonvirtual java/lang/Object/<init>()V",
+																"   return",
+																".end method"] }
 
 compile :: Program -> Err [String]
 compile p = (evalStateT . unCPM) (compileTree p) $ emptyEnv "MyJavaletteClass"
@@ -201,11 +209,21 @@ addVar t n = do
 	let env' = env { variables = (v' : vs), nextVarIndex = new_var_index + 1 }
 	put env'
 
+
+-- iterate all the statements in a function definition and compile them
 compileDef :: TopDef -> CP ()
-compileDef (FnDef retType name args (Block stms)) = do
+compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	clearContexSpec
+	-- put method instructions!
+	putInstruction (StartMethod name)
+	
 	mapM_ (addArgs) args
 	mapM_ (compileStm) stms
+	
+	-- TODO: add stack information here!!!
+	
+	-- put method end instruction
+	putInstruction (EndMethod)
 	
 	code_stack <- gets codeStack
 	prog_code <- gets programCode
@@ -213,14 +231,18 @@ compileDef (FnDef retType name args (Block stms)) = do
 
 	where
 		addArgs (Arg t i) = addVar t i
-	
 
+
+-- translate a specific jasmine instruction to string
 transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
 		VReturn -> "return"
+		StartMethod name -> ".method public static " ++ name ++ "()V"
+		EndMethod -> ".end method"
 		otherwise -> "undefined"
 
+-- translate a block of jasmine instructions and save result in state monad
 transJasmineBlock :: [JasminInstr] -> CP ()
 transJasmineBlock context = do
 	let str_src = map transJasmine context
@@ -228,12 +250,14 @@ transJasmineBlock context = do
 	modify (\e -> e { compiledCode = compiled_code ++ str_src })
 
 compileTree (Program defs) = do
+	
+	-- compile all function defines
 	mapM compileDef defs
 	
+	-- translate jasmine code to strings
 	pgm_code <- gets programCode
-	
-	--let str_src = map (map transJasmine) pgm_code
 	mapM_ (transJasmineBlock) pgm_code
-	compiled_code <- gets compiledCode
 	
+	-- compiledCode now has translated jasmine values
+	compiled_code <- gets compiledCode
 	return $ compiled_code
