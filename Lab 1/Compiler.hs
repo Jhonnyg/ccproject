@@ -194,6 +194,8 @@ addVar t n = do
 	let env' = env { variables = (v' : vs), nextVarIndex = new_var_index + 1 }
 	put env'
 
+
+-- iterate all the statements in a function definition and compile them
 compileDef :: TopDef -> CP ()
 compileDef (FnDef retType name args (Block stms)) = do
 	clearContexSpec
@@ -206,14 +208,16 @@ compileDef (FnDef retType name args (Block stms)) = do
 
 	where
 		addArgs (Arg t i) = addVar t i
-	
 
+
+-- translate a specific jasmine instruction to string
 transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
 		VReturn -> "return"
 		otherwise -> "undefined"
 
+-- translate a block of jasmine instructions and save result in state monad
 transJasmineBlock :: [JasminInstr] -> CP ()
 transJasmineBlock context = do
 	let str_src = map transJasmine context
@@ -221,12 +225,14 @@ transJasmineBlock context = do
 	modify (\e -> e { compiledCode = compiled_code ++ str_src })
 
 compileTree (Program defs) = do
+	
+	-- compile all function defines
 	mapM compileDef defs
 	
+	-- translate jasmine code to strings
 	pgm_code <- gets programCode
-	
-	--let str_src = map (map transJasmine) pgm_code
 	mapM_ (transJasmineBlock) pgm_code
-	compiled_code <- gets compiledCode
 	
+	-- compiledCode now has translated jasmine values
+	compiled_code <- gets compiledCode
 	return $ compiled_code
