@@ -20,7 +20,7 @@ newtype CPM m a = CPM { unCPM :: StateT Env m a }
 -- Type alias to increase readability
 type CP a = CPM Err a
 
-data JasminInstr = undefined
+data JasminInstr = Push 
 
 -- Replace [(from,to)]
 data Env = Env { signatures :: Map Ident Type,
