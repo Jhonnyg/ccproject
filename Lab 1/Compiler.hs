@@ -20,12 +20,14 @@ newtype CPM m a = CPM { unCPM :: StateT Env m a }
 -- Type alias to increase readability
 type CP a = CPM Err a
 
+type Label = Integer
+
 data JasminInstr = 
 	VReturn
 	| Return
+	| Goto Label
 	deriving (Show)
 --data JasminProgram = [JasminInstr]
-
 -- Replace [(from,to)]
 data Env = Env { signatures :: Map Ident Type,
 		 variables :: [Map Ident (Integer, Type)],
