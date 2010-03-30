@@ -23,9 +23,9 @@ type CP a = CPM Err a
 data JasminInstr = 
 	VReturn
 	| Return
+	| StartMethod String [Type] Type Int Int
 	| Goto String
 	| Label Integer
-	| StartMethod String 
 	| EndMethod
 	deriving (Show)
 
@@ -242,7 +242,7 @@ transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
 		VReturn -> "return"
-		StartMethod name -> ".method public static " ++ name ++ "()V"
+		StartMethod name args rettype stack locals -> ".method public static " ++ name ++ "(" ++ "LOL" ++ ")V"
 		EndMethod -> ".end method"
 		otherwise -> "undefined"
 
