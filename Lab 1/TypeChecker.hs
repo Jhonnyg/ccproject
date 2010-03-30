@@ -247,14 +247,40 @@ checkStm stm = do
 		  return ()
 		
 
-checkDef :: TopDef -> TC ()
-checkDef (FnDef retType name args (Block stms)) = do
+checkDefReturn :: TopDef -> TC ()
+checkDefReturn (FnDef Void _ _ _) = return ()
+checkDefReturn fun@(FnDef rettype n _ (Block stms)) = do
+	let has_return = any checkStmReturn stms
+	if (has_return)
+		then return ()
+		else fail $ "Function " ++ (show n) ++ " does not return!"
+
+checkStmReturn :: Stmt -> Bool
+checkStmReturn (Ret _)                = True
+checkStmReturn (VRet)                 = True
+checkStmReturn (BStmt (Block stms))   = any checkStmReturn stms
+checkStmReturn (Cond exp stm)         = case checkExpBool exp of
+																					True  -> checkStmReturn stm
+																					False -> False
+checkStmReturn (CondElse exp stm1 stm2) = (checkStmReturn stm1) && (checkStmReturn stm2)
+checkStmReturn _ = False
+
+checkExpBool :: Expr -> Bool
+checkExpBool ELitTrue     = True
+checkExpBool ELitFalse    = False
+checkExpBool (EAnd e1 e2) = (checkExpBool e1) && (checkExpBool e2)
+checkExpBool (EOr e1 e2)  = (checkExpBool e1) || (checkExpBool e2)
+checkExpBool _            = False
+
+checkDef :: TopDef -> TC TopDef
+checkDef fun@(FnDef retType name args (Block stms)) = do
 	pushContext
 	modify (\e -> e { returnType = retType } )
 	mapM_ addArgs args  
 	mapM checkStm stms
 	popContext
-	return()
+	checkDefReturn fun
+	return (FnDef retType name args (Block newstms))
 	where
 	addArgs :: Arg -> TC ()
 	addArgs (Arg t i) = addVar i t

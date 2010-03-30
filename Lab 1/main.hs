@@ -21,7 +21,7 @@ check s = case pProgram (myLexer s) of
                                         putStrLn err
                                         exitFailure 
                           Ok tree' -> do
-																					putStrLn $ show tree'
+																					--putStrLn $ show tree'
 																					putStrLn "OK"
 
 main :: IO ()
