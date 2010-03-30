@@ -24,10 +24,13 @@ check s = case pProgram (myLexer s) of
                           Ok tree' -> do
 																					putStrLn "Typecheck: OK!"
 																					case compile tree' of
-																						Bad err -> do putStrLn "COMPILE ERROR"
+																						Bad err -> do
+																													putStrLn "COMPILE ERROR"
 																													putStrLn err
 																													exitFailure
-																						Ok _    -> do putStrLn "Compile: OK"
+																						Ok prg    -> do
+																														putStrLn "Compile: OK"
+																														mapM_ (putStrLn) prg
 
 main :: IO ()
 main = do args <- getArgs
