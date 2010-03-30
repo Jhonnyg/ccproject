@@ -25,7 +25,7 @@ type Label = Integer
 data JasminInstr = 
 	VReturn
 	| Return
-	| StartMethod String 
+	| StartMethod String [Type] Type Int Int
 	| EndMethod
 	| Goto Label
 	deriving (Show)
@@ -233,7 +233,7 @@ transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
 		VReturn -> "return"
-		StartMethod name -> ".method public static " ++ name ++ "()V"
+		StartMethod name args rettype stack locals -> ".method public static " ++ name ++ "(" ++ "LOL" ++ ")V"
 		EndMethod -> ".end method"
 		otherwise -> "undefined"
 
