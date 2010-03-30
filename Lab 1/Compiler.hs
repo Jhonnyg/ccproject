@@ -24,6 +24,7 @@ data JasminInstr = undefined
 
 -- Replace [(from,to)]
 data Env = Env { signatures :: Map Ident Type,
+		 variables :: [Map Ident Integer]
 		 nextVarIndex :: Integer,
 		 nextLabelIndex :: Integer,
 		 currentStackDepth :: Integer,
@@ -43,9 +44,13 @@ stdFuncs = [(Ident "printInt", ([Int],Void)),
 
 -- Create an empty environment
 emptyEnv :: Env
-emptyEnv = Env { signatures = Map.fromList stdFuncs
-               , contexts = [Map.empty]
-	       , returnType = undefined }
+emptyEnv = Env { signatures = Map.empty,--Map.fromList stdFuncs, -- add our standard functions here from start?
+                 variables = [Map.empty],
+								 nextVarIndex = 0,
+								 nextLabelIndex = 0,
+								 currentStackDepth = 0,
+								 maxStackDepth = 0,
+								 codeStack = [] }
 
 compile :: Program -> Err ()
 compile p = (evalStateT . unCPM) (checkTree p) emptyEnv

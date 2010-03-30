@@ -10,6 +10,7 @@ import Printjavalette
 
 import TypeChecker 
 
+import Compiler
 
 check :: String -> IO () 
 check s = case pProgram (myLexer s) of
@@ -21,8 +22,12 @@ check s = case pProgram (myLexer s) of
                                         putStrLn err
                                         exitFailure 
                           Ok tree' -> do
-																					--putStrLn $ show tree'
-																					putStrLn "OK"
+																					putStrLn "Typecheck: OK!"
+																					case compile tree' of
+																						Bad err -> do putStrLn "COMPILE ERROR"
+																													putStrLn err
+																													exitFailure
+																						Ok _    -> do putStrLn "Compile: OK"
 
 main :: IO ()
 main = do args <- getArgs
