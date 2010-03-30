@@ -23,7 +23,8 @@ type CP a = CPM Err a
 data JasminInstr = undefined
 
 -- Replace [(from,to)]
-data Env = Env { nextVarIndex :: Integer,
+data Env = Env { signatures :: Map Ident Type,
+		 nextVarIndex :: Integer,
 		 nextLabelIndex :: Integer,
 		 currentStackDepth :: Integer,
 		 maxStackDepth :: Integer,
