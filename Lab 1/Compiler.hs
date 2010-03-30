@@ -20,14 +20,13 @@ newtype CPM m a = CPM { unCPM :: StateT Env m a }
 -- Type alias to increase readability
 type CP a = CPM Err a
 
-type Label = Integer
-
 data JasminInstr = 
 	VReturn
 	| Return
 	| StartMethod String [Type] Type Int Int
+	| Goto String
+	| Label Integer
 	| EndMethod
-	| Goto Label
 	deriving (Show)
 --data JasminProgram = [JasminInstr]
 -- Replace [(from,to)]
@@ -41,6 +40,12 @@ data Env = Env { signatures :: Map Ident Type,
 		 programCode :: [[JasminInstr]],
 		 compiledCode :: [String] }
 
+getLabel :: CP Integer
+getLabel = do
+	next_label <- gets nextLabelIndex
+	modify (\e -> e { nextLabelIndex = next_label++}
+	return next_label
+	
 
 putInstruction :: JasminInstr -> CP ()
 putInstruction instr = do
