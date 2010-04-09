@@ -13,6 +13,8 @@ import Control.Monad (liftM2)
 import Data.Map (Map)
 import qualified Data.Map as Map
 
+import List (intersperse)
+
 -- Encapsulate environment in a state monad as to enable error and state handling at the same time 
 newtype CPM m a = CPM { unCPM :: StateT Env m a }
     deriving (Monad, MonadTrans, MonadState Env)
@@ -45,7 +47,7 @@ data Env = Env { signatures :: Map Ident Type,
 getLabel :: CP Integer
 getLabel = do
 	next_label <- gets nextLabelIndex
-	modify (\e -> e { nextLabelIndex = next_label++}
+	modify (\e -> e { nextLabelIndex = next_label + 1} )
 	return next_label
 	
 
@@ -92,6 +94,12 @@ emptyEnv name = Env { signatures = Map.empty,--Map.fromList stdFuncs, -- add our
 																".method public <init>()V",
 																"   aload_0",
 																"   invokenonvirtual java/lang/Object/<init>()V",
+																"   return",
+																".end method",
+																".method public static main([Ljava/lang/String;)V",
+																"   .limit locals 1",
+																"   invokestatic " ++ name ++ "/main()I",
+																"   pop",
 																"   return",
 																".end method"] }
 
@@ -190,7 +198,7 @@ compileStm stm = do
 		   
 		Decr name		-> undefined
 		   
-		Ret  expr     		-> undefined
+		Ret  expr     		-> putInstruction Return
 		 
 		VRet     		-> putInstruction VReturn
 		   
@@ -218,31 +226,39 @@ addVar t n = do
 compileDef :: TopDef -> CP ()
 compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	clearContexSpec
-	-- put method instructions!
-	putInstruction (StartMethod name)
 	
 	mapM_ (addArgs) args
 	mapM_ (compileStm) stms
 	
 	-- TODO: add stack information here!!!
 	
+	-- put method instructions!
+	--putInstruction (StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType 0 0) -- StartMethod name args rettype stack locals
 	-- put method end instruction
-	putInstruction (EndMethod)
+	--putInstruction (EndMethod)
 	
 	code_stack <- gets codeStack
 	prog_code <- gets programCode
-	modify (\e -> e { programCode = prog_code ++ [code_stack] })
+	let code_stack' = ((StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType 0 0) : code_stack) ++ [EndMethod]
+	modify (\e -> e { programCode = prog_code ++ [code_stack'] })
 
 	where
 		addArgs (Arg t i) = addVar t i
 
+-- translate types to jasmine type identifiers
+transJasmineType :: Type -> String
+transJasmineType Int = "I"
+transJasmineType Doub = "D"
+transJasmineType Bool = "I"
+transJasmineType Void = "V"
 
 -- translate a specific jasmine instruction to string
 transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
+		Return -> "return"
 		VReturn -> "return"
-		StartMethod name args rettype stack locals -> ".method public static " ++ name ++ "(" ++ "LOL" ++ ")V"
+		StartMethod name args rettype stack locals -> ".method public static " ++ name ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype)
 		EndMethod -> ".end method"
 		otherwise -> "undefined"
 
