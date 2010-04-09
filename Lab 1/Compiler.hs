@@ -25,10 +25,11 @@ type CP a = CPM Err a
 data JasminInstr = 
 	VReturn
 	| Return
-	| StartMethod String [Type] Type Int Int
+	| StartMethod String [Type] Type Integer Integer
 	| Goto String
 	| Label Integer
 	| EndMethod
+	| PushInt Integer
 	deriving (Show)
 
 
@@ -55,6 +56,16 @@ putInstruction :: JasminInstr -> CP ()
 putInstruction instr = do
 	code_stack <- gets codeStack
 	modify (\e -> e { codeStack = code_stack ++ [instr] })
+
+-- increase stack counter
+incrStack :: CP ()
+incrStack = do
+	stack_depth <- gets currentStackDepth
+	max_stack_depth <- gets maxStackDepth
+	let stack_depth' = stack_depth + 1
+	
+	when (stack_depth' > max_stack_depth) $ modify (\e -> e { maxStackDepth = stack_depth' })
+	modify (\e -> e { currentStackDepth = stack_depth'})
 
 clearContexSpec :: CP ()
 clearContexSpec = do
@@ -160,11 +171,15 @@ lookFun fName = do
 	return $ fromJust mbtSig
 	
 -}
+
+-- compile expressions
 compileExp :: Expr -> CP ()
 compileExp expr = do
 	case expr of
 		EVar name 		-> undefined
-		ELitInt i 		-> undefined 
+		ELitInt i 		-> do
+			incrStack
+			putInstruction (PushInt i)
 		ELitDoub d 		-> undefined
 		ELitTrue		-> undefined
 		ELitFalse		-> undefined
@@ -198,7 +213,9 @@ compileStm stm = do
 		   
 		Decr name		-> undefined
 		   
-		Ret  expr     		-> putInstruction Return
+		Ret  expr     		-> do
+			compileExp expr
+			putInstruction Return
 		 
 		VRet     		-> putInstruction VReturn
 		   
@@ -239,7 +256,8 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	
 	code_stack <- gets codeStack
 	prog_code <- gets programCode
-	let code_stack' = ((StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType 0 0) : code_stack) ++ [EndMethod]
+	max_stack_depth <- gets maxStackDepth
+	let code_stack' = ((StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType max_stack_depth 0) : code_stack) ++ [EndMethod]
 	modify (\e -> e { programCode = prog_code ++ [code_stack'] })
 
 	where
@@ -256,10 +274,13 @@ transJasmineType Void = "V"
 transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
-		Return -> "return"
+		Return -> "ireturn"
 		VReturn -> "return"
-		StartMethod name args rettype stack locals -> ".method public static " ++ name ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype)
+		StartMethod name args rettype stack locals -> ".method public static " ++ name ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype) ++ 
+																									"\n  .limit locals " ++ (show locals) ++
+																									"\n  .limit stack " ++ (show stack)
 		EndMethod -> ".end method"
+		PushInt i -> "ldc " ++ (show i)
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
