@@ -6,12 +6,12 @@ public class Runtime {
 	}
 
 	// Print functions
-	public static void printInt(Integer i) {
-		System.out.println(i.toString());
+	public static void printInt(int i) {
+		System.out.println(i);
 	}
 	
-	public static void printDouble(Double d) {
-		System.out.println(d.toString());
+	public static void printDouble(double d) {
+		System.out.println(d);
 	}
 	
 	public static void printString(String s) {
@@ -19,7 +19,7 @@ public class Runtime {
 	}
 	
 	// Read functions
-	public static Integer readInt() {
+	public static int readInt() {
 		String line = null;
 		
 		try {
@@ -38,7 +38,7 @@ public class Runtime {
 		return -1;
 	}
 	
-	public static Double readDouble() {
+	public static double readDouble() {
 		String line = null;
 		
 		try {

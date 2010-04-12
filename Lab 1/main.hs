@@ -23,6 +23,7 @@ check s = case pProgram (myLexer s) of
                                         exitFailure 
                           Ok tree' -> do
 																					--putStrLn "Typecheck: OK!"
+																					--fail $ (show tree')
 																					case compile tree' of
 																						Bad err -> do
 																													putStrLn "COMPILE ERROR"

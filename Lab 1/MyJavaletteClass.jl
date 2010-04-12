@@ -1,9 +1,12 @@
-//class test_compiler {
-int main() {
-	return 1337;
-}
-//}
 
-double poop() {
+int main() {
+	printInt(123);
+	return 0;
+//	return LOL();
+}
+
+
+double LOL()
+{
 	return 1.337;
 }

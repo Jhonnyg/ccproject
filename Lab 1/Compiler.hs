@@ -10,6 +10,8 @@ import Control.Monad.State
 import Control.Monad.Trans
 import Control.Monad (liftM2)
 
+import Data.Maybe (fromJust, catMaybes, isNothing)
+
 import Data.Map (Map)
 import qualified Data.Map as Map
 
@@ -32,12 +34,18 @@ data JasminInstr =
 	| EndMethod
 	| PushInt Integer
 	| PushDoub Double
+	| FunctionCall String [Type] Type
+	| FunctionCallExternal String [Type] Type
 	deriving (Show)
 
 
+data MethodSignature = Internal ([Type], Type) | External ([Type], Type)
+
 --data JasminProgram = [JasminInstr]
 -- Replace [(from,to)]
-data Env = Env { signatures :: Map Ident Type,
+data Env = Env {
+		 classname :: String,
+		 signatures :: Map Ident MethodSignature,
 		 variables :: [Map Ident (Integer, Type)],
 		 nextVarIndex :: Integer,
 		 nextLabelIndex :: Integer,
@@ -68,6 +76,15 @@ incrStack = do
 	
 	when (stack_depth' > max_stack_depth) $ modify (\e -> e { maxStackDepth = stack_depth' })
 	modify (\e -> e { currentStackDepth = stack_depth'})
+	
+-- increase stack counter
+decrStack :: CP ()
+decrStack = do
+	stack_depth <- gets currentStackDepth
+	max_stack_depth <- gets maxStackDepth
+	let stack_depth' = stack_depth - 1
+	
+	modify (\e -> e { currentStackDepth = stack_depth'})
 
 clearContexSpec :: CP ()
 clearContexSpec = do
@@ -85,14 +102,16 @@ clearContexSpec = do
                     , contexts :: [Map Ident Type]
 		    , returnType :: Type -}
 
-stdFuncs = [(Ident "printInt", ([Int],Void)),
-	    (Ident "readInt", ([],Int)),
-	    (Ident "printDouble", ([Doub],Void)),
-	    (Ident "readDouble", ([],Doub))]	
+stdFuncs = [(Ident "printInt", External ([Int],Void)),
+	    (Ident "readInt", External ([],Int)),
+	    (Ident "printDouble", External ([Doub],Void)),
+	    (Ident "readDouble", External ([],Doub))]	
 
 -- Create an empty environment
 emptyEnv :: String -> Env
-emptyEnv name = Env { signatures = Map.empty,--Map.fromList stdFuncs, -- add our standard functions here from start?
+emptyEnv name = Env {
+                 classname = name,
+                 signatures = Map.fromList stdFuncs, -- add our standard functions here from start?
                  variables = [Map.empty],
 								 nextVarIndex = 0,
 								 nextLabelIndex = 0,
@@ -184,12 +203,29 @@ compileExp expr = do
 			putInstruction (PushInt i)
 		ELitDoub d 		-> 	do
 			incrStack
+			incrStack
 			putInstruction (PushDoub d)
-		ELitTrue		-> undefined
-		ELitFalse		-> undefined
-		EApp n expList 		-> undefined
+		ELitTrue		-> do
+			incrStack
+			putInstruction (PushInt 1)
+		ELitFalse		->	 do
+				incrStack
+				putInstruction (PushInt 0)
+		EApp ident@(Ident n) expList 		-> do
+			mapM compileExp expList
+			mapM (\e -> decrStack) expList
+			
+			method_sig <- lookFun ident
+			incrStack
+			case method_sig of
+				(Internal (args, ret)) -> do
+					clname <- gets classname
+					putInstruction $ FunctionCall (clname ++ "/" ++ n) args ret
+					
+				(External (args, ret)) -> putInstruction $ FunctionCallExternal n args ret
+				
 		EAppS (Ident "printString") str -> undefined
-		EAppS n str		-> undefined
+--		EAppS n str		-> undefined
 		Neg expr		-> undefined
 			-- exprVal <- compileExp expr
 			-- push - exprVal to stack
@@ -234,7 +270,7 @@ compileStm (SType typ stm) = do
 		 
 		While expr stmt		-> undefined
   		 
-		SExp exprs		-> undefined
+		SExp exprs		-> compileExp exprs
 
 -- add a variable to current context and fail if it already exists
 addVar :: Type -> Ident -> CP ()
@@ -272,6 +308,24 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	where
 		addArgs (Arg t i) = addVar t i
 
+-- add a function definition
+addDef :: TopDef -> CP ()
+addDef (FnDef retType n as _) = do
+	sigs <- gets signatures 
+	let ts = map argToType as
+	let sigs' = Map.insert n (Internal (ts,retType)) sigs
+	modify (\e -> e { signatures = sigs' } ) -- updates the state record signatures
+	where 
+		argToType :: Arg -> Type
+		argToType (Arg t _) = t
+	
+-- Look for a function in the signatures
+lookFun :: Ident -> CP MethodSignature--([Type], Type)
+lookFun fName = do
+	mbtSig <- gets (Map.lookup fName. signatures)
+	when (isNothing mbtSig) (fail $ "Unknown function name")
+	return $ fromJust mbtSig
+
 -- translate types to jasmine type identifiers
 transJasmineType :: Type -> String
 transJasmineType Int = "I"
@@ -291,7 +345,9 @@ transJasmine instr = do
 																									"\n  .limit stack " ++ (show stack)
 		EndMethod -> ".end method"
 		PushInt i -> "ldc " ++ (show i)
-		PushDoub d -> "ldc_w " ++ (show d)
+		PushDoub d -> "ldc2_w " ++ (show d)
+		FunctionCall n args ret -> "invokestatic " ++ (map (\e -> if (e == '.') then '/' else e) n) ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
+		FunctionCallExternal n args ret -> "invokestatic Runtime/" ++ n ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
@@ -301,7 +357,11 @@ transJasmineBlock context = do
 	compiled_code <- gets compiledCode
 	modify (\e -> e { compiledCode = compiled_code ++ str_src })
 
+
 compileTree (Program defs) = do
+	
+	-- store defs
+	mapM addDef defs
 	
 	-- compile all function defines
 	mapM compileDef defs
