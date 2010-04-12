@@ -24,12 +24,14 @@ type CP a = CPM Err a
 
 data JasminInstr = 
 	VReturn
-	| Return
+	| IReturn
+	| DReturn
 	| StartMethod String [Type] Type Integer Integer
 	| Goto String
 	| Label Integer
 	| EndMethod
 	| PushInt Integer
+	| PushDoub Double
 	deriving (Show)
 
 
@@ -69,14 +71,14 @@ incrStack = do
 
 clearContexSpec :: CP ()
 clearContexSpec = do
-	program_code <- gets programCode
-	code_stack <- gets codeStack
+--	program_code <- gets programCode
+--	code_stack <- gets codeStack
 	modify (\e -> e { variables = [Map.empty],
 										nextVarIndex = 0,
 	                  currentStackDepth = 0,
 	                  maxStackDepth = 0,
-	                  codeStack = [],
-	                  programCode = code_stack : program_code})
+	                  codeStack = []})
+--	                  programCode = code_stack : program_code})
 
 {- -- all the type signatures from all the functions
                       signatures :: Map Ident ([Type], Type)
@@ -180,7 +182,9 @@ compileExp expr = do
 		ELitInt i 		-> do
 			incrStack
 			putInstruction (PushInt i)
-		ELitDoub d 		-> undefined
+		ELitDoub d 		-> 	do
+			incrStack
+			putInstruction (PushDoub d)
 		ELitTrue		-> undefined
 		ELitFalse		-> undefined
 		EApp n expList 		-> undefined
@@ -198,10 +202,10 @@ compileExp expr = do
 		EOr e0 e1		-> undefined
 		
 compileStm :: Stmt -> CP ()
-compileStm stm = do
+compileStm (SType typ stm) = do
 	--fail (show stm)
 	case stm of
-		SType t stmt 		-> compileStm stmt
+--		SType t stmt 		-> compileStm stmt
 		Empty 			-> undefined
 		BStmt (Block stmts) 	-> undefined
 			
@@ -213,9 +217,14 @@ compileStm stm = do
 		   
 		Decr name		-> undefined
 		   
-		Ret  expr     		-> do
-			compileExp expr
-			putInstruction Return
+		Ret  expr     		-> case typ of
+			Int -> do
+				compileExp expr
+				putInstruction IReturn
+			Doub -> do
+				compileExp expr
+				putInstruction DReturn
+			otherwise -> undefined
 		 
 		VRet     		-> putInstruction VReturn
 		   
@@ -274,13 +283,15 @@ transJasmineType Void = "V"
 transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
-		Return -> "ireturn"
+		IReturn -> "ireturn"
+		DReturn -> "dreturn"
 		VReturn -> "return"
 		StartMethod name args rettype stack locals -> ".method public static " ++ name ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype) ++ 
 																									"\n  .limit locals " ++ (show locals) ++
 																									"\n  .limit stack " ++ (show stack)
 		EndMethod -> ".end method"
 		PushInt i -> "ldc " ++ (show i)
+		PushDoub d -> "ldc_w " ++ (show d)
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad

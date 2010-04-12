@@ -177,7 +177,7 @@ checkStm stm = do
 			pushContext
 			mapM_ (checkStm) stmts
 			popContext
-			return stm
+			return (SType Void stm)
 			
 		Decl  t itmList		-> do
 			mapM_ (addItem t) itmList
@@ -227,20 +227,20 @@ checkStm stm = do
 		  exptype <- inferExp expr
 		  when (exptype /= Bool) (fail $ "Conditional expression for if-else-statement  not of boolean type: " ++ (show exptype))
 		  checkStm stmt
-		  return stm
+		  return (SType Void stm)
 		    
 		CondElse  expr ifs els  -> do
 		  exptype <- inferExp expr
 		  when (exptype /= Bool) (fail $ "Conditional expression for if-statement not of boolean type: " ++ (show exptype))
 		  checkStm ifs
 		  checkStm els
-		  return stm
+		  return (SType Void stm)
 		  
 		While expr stmt		->   do
   		  exptype <- inferExp expr
   		  when (exptype /= Bool) (fail $ "Conditional expression for while-statement not of boolean type: " ++ (show exptype))
   		  checkStm stmt
-  		  return stm
+  		  return (SType Void stm)
   		  
 		SExp exprs		-> do
 		  typ <- inferExp exprs
