@@ -249,7 +249,8 @@ compileStm (SType typ stm) = do
 	case stm of
 --		SType t stmt 		-> compileStm stmt
 		Empty 			-> undefined
-		BStmt (Block stmts) 	-> undefined
+		BStmt (Block stmts) 	-> do
+			mapM compileStm stmts
 			
 		Decl  t itmList		-> undefined
 		  			
@@ -266,6 +267,9 @@ compileStm (SType typ stm) = do
 			Doub -> do
 				compileExp expr
 				putInstruction DReturn
+			Bool -> do
+				compileExp expr
+				putInstruction IReturn
 			otherwise -> undefined
 		 
 		VRet     		-> putInstruction VReturn
