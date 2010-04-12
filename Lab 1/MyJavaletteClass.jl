@@ -1,12 +1,11 @@
 
 int main() {
-	printInt(123);
+	int a;
+	a = 1337;
+	a++;
+	a++;
+	a--;
+	printInt(a);
 	return 0;
-//	return LOL();
 }
 
-
-double LOL()
-{
-	return 1.337;
-}

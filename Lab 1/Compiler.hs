@@ -34,6 +34,9 @@ data JasminInstr =
 	| EndMethod
 	| PushInt Integer
 	| PushDoub Double
+	| Store Type Integer
+	| Load Type Integer
+	| Increase Integer Integer
 	| FunctionCall String [Type] Type
 	| FunctionCallExternal String [Type] Type
 	deriving (Show)
@@ -60,7 +63,24 @@ getLabel = do
 	next_label <- gets nextLabelIndex
 	modify (\e -> e { nextLabelIndex = next_label + 1} )
 	return next_label
+
+addVar :: Type -> Ident -> CP ()
+addVar t n = do
+	v:vs <- gets variables
+	next_index <- gets nextVarIndex
+	when (Map.member n v) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top context"
+	let v' = Map.insert n (next_index, t) v
+	modify (\e -> e { variables = v':vs, nextVarIndex = next_index + 1} )
 	
+getVar :: Ident -> CP (Integer, Type)
+getVar n = do
+	vars <- gets variables
+	rtrn (catMaybes ((map (Map.lookup n) vars)))
+  where
+	-- if we cant find anything, make sure we fail
+	  rtrn :: [(Integer, Type)] -> CP (Integer, Type)
+	  rtrn [] = fail $ (show n) ++ " referenced, but not found!"
+	  rtrn (x:xs) = return x
 
 putInstruction :: JasminInstr -> CP ()
 putInstruction instr = do
@@ -197,7 +217,9 @@ lookFun fName = do
 compileExp :: Expr -> CP ()
 compileExp expr = do
 	case expr of
-		EVar name 		-> undefined
+		EVar name 		-> do
+			(local, typ) <- getVar name
+			putInstruction (Load typ local)
 		ELitInt i 		-> do
 			incrStack
 			putInstruction (PushInt i)
@@ -231,7 +253,6 @@ compileExp expr = do
 					putInstruction $ FunctionCallExternal n args ret
 				
 		EAppS (Ident "printString") str -> undefined
---		EAppS n str		-> undefined
 		Neg expr		-> undefined
 			-- exprVal <- compileExp expr
 			-- push - exprVal to stack
@@ -242,23 +263,38 @@ compileExp expr = do
 		ERel e0 op e1		-> undefined
 		EAnd e0 e1		-> undefined
 		EOr e0 e1		-> undefined
-		
+
+-- compile variable declarations
+compileDecl :: Type -> Item -> CP ()
+compileDecl t (NoInit ident) = addVar t ident
+compileDecl t (Init ident expr) = do
+	addVar t ident
+	(local,_) <- getVar ident
+	compileExp expr
+	putInstruction $ (Store t local)
+
+
+-- compile statements
 compileStm :: Stmt -> CP ()
 compileStm (SType typ stm) = do
-	--fail (show stm)
 	case stm of
---		SType t stmt 		-> compileStm stmt
 		Empty 			-> undefined
-		BStmt (Block stmts) 	-> do
-			mapM compileStm stmts
+		BStmt (Block stmts) 	-> mapM_ compileStm stmts
 			
-		Decl  t itmList		-> undefined
+		Decl  t itmList		-> mapM_ (compileDecl t) itmList
 		  			
-		Ass name epxr		-> undefined
+		Ass name expr		-> do
+			compileExp expr
+			(local, typ) <- getVar name
+			putInstruction $ Store typ local
 		     
-		Incr name		-> undefined
+		Incr name		-> do
+			(local, _) <- getVar name
+			putInstruction $ Increase local 1
 		   
-		Decr name		-> undefined
+		Decr name		-> 	do
+				(local, _) <- getVar name
+				putInstruction $ Increase local (-1)
 		   
 		Ret  expr     		-> case typ of
 			Int -> do
@@ -282,17 +318,6 @@ compileStm (SType typ stm) = do
   		 
 		SExp exprs		-> compileExp exprs
 
--- add a variable to current context and fail if it already exists
-addVar :: Type -> Ident -> CP ()
-addVar t n = do
-	env <- get
-	let (v:vs) = variables env
-	new_var_index <- gets nextVarIndex
-	when (Map.member n v) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top variable context"
-	let v' = Map.insert n (new_var_index, t) v
-	let env' = env { variables = (v' : vs), nextVarIndex = new_var_index + 1 }
-	put env'
-
 
 -- iterate all the statements in a function definition and compile them
 compileDef :: TopDef -> CP ()
@@ -313,7 +338,8 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	code_stack <- gets codeStack
 	prog_code <- gets programCode
 	max_stack_depth <- gets maxStackDepth
-	let code_stack' = ((StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType max_stack_depth 0) : code_stack) ++ [EndMethod]
+	num_locals <- gets nextVarIndex
+	let code_stack' = ((StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType max_stack_depth num_locals) : code_stack) ++ [EndMethod]
 	modify (\e -> e { programCode = prog_code ++ [code_stack'] })
 
 	where
@@ -360,6 +386,16 @@ transJasmine instr = do
 		FunctionCall n args ret -> "  invokestatic " ++ (map (\e -> if (e == '.') then '/' else e) n) ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
 		FunctionCallExternal n args ret -> "  invokestatic Runtime/" ++ n ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
 		Label lbl -> " " ++ lbl ++ ":"
+		Store typ i -> case typ of
+			Int -> "  istore " ++ (show i)
+			Doub -> "  dstore " ++ (show i)
+			Bool -> "  istore " ++ (show i)
+			otherwise -> fail $ "Store instruction failed, unsupported type!"
+		Load typ i -> case typ of
+			Int -> "  iload " ++ (show i)
+			Doub -> "  dload " ++ (show i)
+			Bool -> "  iload " ++ (show i)
+		Increase local i -> "  iinc " ++ (show local) ++ " " ++ (show i)
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
@@ -369,7 +405,7 @@ transJasmineBlock context = do
 	compiled_code <- gets compiledCode
 	modify (\e -> e { compiledCode = compiled_code ++ str_src })
 
-
+compileTree :: Program -> CPM Err [String]
 compileTree (Program defs) = do
 	
 	-- store defs
