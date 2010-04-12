@@ -30,7 +30,7 @@ data JasminInstr =
 	| DReturn
 	| StartMethod String [Type] Type Integer Integer
 	| Goto String
-	| Label Integer
+	| Label String
 	| EndMethod
 	| PushInt Integer
 	| PushDoub Double
@@ -201,28 +201,34 @@ compileExp expr = do
 		ELitInt i 		-> do
 			incrStack
 			putInstruction (PushInt i)
+			
 		ELitDoub d 		-> 	do
 			incrStack
 			incrStack
 			putInstruction (PushDoub d)
+			
 		ELitTrue		-> do
 			incrStack
 			putInstruction (PushInt 1)
+			
 		ELitFalse		->	 do
-				incrStack
-				putInstruction (PushInt 0)
+			incrStack
+			putInstruction (PushInt 0)
+			
 		EApp ident@(Ident n) expList 		-> do
 			mapM compileExp expList
 			mapM (\e -> decrStack) expList
 			
 			method_sig <- lookFun ident
-			incrStack
 			case method_sig of
 				(Internal (args, ret)) -> do
+					when (ret /= Void) incrStack -- only increase stack if we the function returns something
 					clname <- gets classname
 					putInstruction $ FunctionCall (clname ++ "/" ++ n) args ret
 					
-				(External (args, ret)) -> putInstruction $ FunctionCallExternal n args ret
+				(External (args, ret)) -> do
+					when (ret /= Void) incrStack -- only increase stack if we the function returns something
+					putInstruction $ FunctionCallExternal n args ret
 				
 		EAppS (Ident "printString") str -> undefined
 --		EAppS n str		-> undefined
@@ -289,6 +295,8 @@ compileDef :: TopDef -> CP ()
 compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	clearContexSpec
 	
+	putInstruction (Label "entry")
+	
 	mapM_ (addArgs) args
 	mapM_ (compileStm) stms
 	
@@ -298,7 +306,6 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	--putInstruction (StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType 0 0) -- StartMethod name args rettype stack locals
 	-- put method end instruction
 	--putInstruction (EndMethod)
-	
 	code_stack <- gets codeStack
 	prog_code <- gets programCode
 	max_stack_depth <- gets maxStackDepth
@@ -337,17 +344,18 @@ transJasmineType Void = "V"
 transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
-		IReturn -> "ireturn"
-		DReturn -> "dreturn"
-		VReturn -> "return"
-		StartMethod name args rettype stack locals -> ".method public static " ++ name ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype) ++ 
+		IReturn -> "  ireturn"
+		DReturn -> "  dreturn"
+		VReturn -> "  return"
+		StartMethod name args rettype stack locals -> "\n.method public static " ++ name ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype) ++ 
 																									"\n  .limit locals " ++ (show locals) ++
 																									"\n  .limit stack " ++ (show stack)
 		EndMethod -> ".end method"
-		PushInt i -> "ldc " ++ (show i)
-		PushDoub d -> "ldc2_w " ++ (show d)
-		FunctionCall n args ret -> "invokestatic " ++ (map (\e -> if (e == '.') then '/' else e) n) ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
-		FunctionCallExternal n args ret -> "invokestatic Runtime/" ++ n ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
+		PushInt i -> "  ldc " ++ (show i)
+		PushDoub d -> "  ldc2_w " ++ (show d)
+		FunctionCall n args ret -> "  invokestatic " ++ (map (\e -> if (e == '.') then '/' else e) n) ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
+		FunctionCallExternal n args ret -> "  invokestatic Runtime/" ++ n ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
+		Label lbl -> " " ++ lbl ++ ":"
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
