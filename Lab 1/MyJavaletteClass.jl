@@ -10,11 +10,12 @@ int main() {
 	a = 2;
 	a--;
 	
-	c = readDouble();
+	//c = readDouble();
+	printString("Testing printString");
 	
 	printInt(a+b);
 	printInt(d*e);
-	printDouble(c);
+	//printDouble(c);
 	return 0;
 }
 

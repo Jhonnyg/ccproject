@@ -39,6 +39,7 @@ data JasminInstr =
 	| Increase Integer Integer
 	| FunctionCall String [Type] Type
 	| FunctionCallExternal String [Type] Type
+	| FunctionCallPrintString String
 	| Add Type
 	| Sub Type
 	| Mul Type
@@ -209,7 +210,11 @@ compileExp expr = do
 					putInstruction $ FunctionCallExternal n args ret
 					return ret
 				
-		EAppS (Ident "printString") str -> undefined
+		EAppS (Ident "printString") str -> do
+			incrStack
+			putInstruction $ FunctionCallPrintString str
+			return Void
+			
 		Neg expr		-> undefined
 			-- exprVal <- compileExp expr
 			-- push - exprVal to stack
@@ -361,6 +366,8 @@ transJasmine instr = do
 		PushDoub d -> "  ldc2_w " ++ (show d)
 		FunctionCall n args ret -> "  invokestatic " ++ (map (\e -> if (e == '.') then '/' else e) n) ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
 		FunctionCallExternal n args ret -> "  invokestatic Runtime/" ++ n ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
+		FunctionCallPrintString str -> "  ldc " ++ (show str) ++
+																	"\n  invokestatic Runtime/printString(Ljava/lang/String;)V"
 		Label lbl -> " " ++ lbl ++ ":"
 		Store typ i -> case typ of
 			Int -> "  istore " ++ (show i)
