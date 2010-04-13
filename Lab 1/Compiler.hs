@@ -66,6 +66,7 @@ getLabel = do
 	modify (\e -> e { nextLabelIndex = next_label + 1} )
 	return next_label
 
+-- add variable to current context (i.e. give it a local var number)
 addVar :: Type -> Ident -> CP ()
 addVar t n = do
 	v:vs <- gets variables
@@ -76,7 +77,8 @@ addVar t n = do
 	when (Map.member n v) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top context"
 	let v' = Map.insert n (next_index, t) v
 	modify (\e -> e { variables = v':vs } )
-	
+
+-- get local var number and type from variable name
 getVar :: Ident -> CP (Integer, Type)
 getVar n = do
 	vars <- gets variables
@@ -87,6 +89,7 @@ getVar n = do
 	  rtrn [] = fail $ (show n) ++ " referenced, but not found!"
 	  rtrn (x:xs) = return x
 
+-- push a jasmine instruction on the code stack
 putInstruction :: JasminInstr -> CP ()
 putInstruction instr = do
 	code_stack <- gets codeStack
@@ -111,21 +114,14 @@ decrStack = do
 	
 	modify (\e -> e { currentStackDepth = stack_depth'})
 
+-- clear context (i.e. enter a new method)
 clearContexSpec :: CP ()
 clearContexSpec = do
---	program_code <- gets programCode
---	code_stack <- gets codeStack
 	modify (\e -> e { variables = [Map.empty],
 										nextVarIndex = 0,
 	                  currentStackDepth = 0,
 	                  maxStackDepth = 0,
 	                  codeStack = []})
---	                  programCode = code_stack : program_code})
-
-{- -- all the type signatures from all the functions
-                      signatures :: Map Ident ([Type], Type)
-                    , contexts :: [Map Ident Type]
-		    , returnType :: Type -}
 
 stdFuncs = [(Ident "printInt", External ([Int],Void)),
 	    (Ident "readInt", External ([],Int)),
@@ -160,63 +156,9 @@ emptyEnv name = Env {
 																"   return",
 																".end method"] }
 
+-- main entry point for compiler
 compile :: Program -> Err [String]
 compile p = (evalStateT . unCPM) (compileTree p) $ emptyEnv "MyJavaletteClass"
-
--- place one empty context at the top of the stack
-{-
-pushContext :: TC ()
-pushContext = modify (\e -> e { contexts = (Map.empty :  contexts e)})
-
--- remove topmost context from the stack
-popContext :: TC ()
-popContext = do
-        ctxStack <- gets contexts
-        when (null ctxStack) (error "popping from an empty context stack")
-        modify (\e -> e { contexts = tail ctxStack })
-
--- add a variable to current context and fail if it already exists
-addVar :: Ident -> Type -> TC ()
-addVar n t = do
-        env <- get
-        let (c:cs) = contexts env
-        when (Map.member n c) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top context"
-        let c' = Map.insert n t c
-        let env' = env { contexts = (c' : cs) }
-        put env'
-
--- add a function definition
-addDef :: TopDef -> TC ()
-addDef (FnDef retType n as _) = do
-	sigs <- gets signatures 
-	let ts = map argToType as
-	let sigs' = Map.insert n (ts,retType) sigs
-	modify (\e -> e { signatures = sigs' } ) -- updates the state record signatures
-	where 
-	argToType :: Arg -> Type
-	argToType (Arg t _) = t
-
---addDef (FnDef Void printInt 
-	
--- Look for a variable in allall the contextss
-lookVar :: Ident -> TC Type
-lookVar n = do
-        ctxs <- gets contexts 
-        rtrn (catMaybes ((map (Map.lookup n) ctxs)))
-        where
-	-- if we cant find anything, make sure we fail
-        rtrn :: [Type] -> TC Type
-        rtrn [] = fail $ "type of " ++ (show n) ++ " not found"
-        rtrn (x:xs) = return x
-
--- Look for a function in the signatures
-lookFun :: Ident -> TC ([Type], Type)
-lookFun fName = do
-	mbtSig <- gets (Map.lookup fName. signatures)
-	when (isNothing mbtSig) (fail $ "Unknown function name")
-	return $ fromJust mbtSig
-	
--}
 
 -- compile expressions
 compileExp :: Expr -> CP Type
@@ -352,15 +294,12 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	
 	putInstruction (Label "entry")
 	
+	-- add arguments as local vars
 	mapM_ (addArgs) args
+	
+	-- compile each code statement
 	mapM_ (compileStm) stms
 	
-	-- TODO: add stack information here!!!
-	
-	-- put method instructions!
-	--putInstruction (StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType 0 0) -- StartMethod name args rettype stack locals
-	-- put method end instruction
-	--putInstruction (EndMethod)
 	code_stack <- gets codeStack
 	prog_code <- gets programCode
 	max_stack_depth <- gets maxStackDepth
