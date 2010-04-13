@@ -39,6 +39,8 @@ data JasminInstr =
 	| Increase Integer Integer
 	| FunctionCall String [Type] Type
 	| FunctionCallExternal String [Type] Type
+	| Add Type
+	| Sub Type
 	deriving (Show)
 
 
@@ -214,11 +216,13 @@ lookFun fName = do
 -}
 
 -- compile expressions
-compileExp :: Expr -> CP ()
-compileExp expr = do
+compileExp :: Type -> Expr -> CP ()
+compileExp t expr = do
 	case expr of
 		EVar name 		-> do
+			incrStack
 			(local, typ) <- getVar name
+			when (typ == Doub) incrStack
 			putInstruction (Load typ local)
 		ELitInt i 		-> do
 			incrStack
@@ -238,7 +242,7 @@ compileExp expr = do
 			putInstruction (PushInt 0)
 			
 		EApp ident@(Ident n) expList 		-> do
-			mapM compileExp expList
+			mapM (compileExp t) expList
 			mapM (\e -> decrStack) expList
 			
 			method_sig <- lookFun ident
@@ -258,7 +262,16 @@ compileExp expr = do
 			-- push - exprVal to stack
 		Not expr		-> undefined
 		EMul e0 op e1		-> undefined
-		EAdd e0 op e1		-> undefined
+		EAdd e0 op e1		-> do
+			compileExp t e1
+			compileExp t e0
+			decrStack
+			when (t == Doub) decrStack
+			case op of 
+				Plus -> do
+								putInstruction $ Add t
+				otherwise -> do
+								putInstruction $ Sub t
 		ERel e0 (EQU) e1 	-> undefined
 		ERel e0 op e1		-> undefined
 		EAnd e0 e1		-> undefined
@@ -270,7 +283,7 @@ compileDecl t (NoInit ident) = addVar t ident
 compileDecl t (Init ident expr) = do
 	addVar t ident
 	(local,_) <- getVar ident
-	compileExp expr
+	compileExp t expr
 	putInstruction $ (Store t local)
 
 
@@ -278,13 +291,13 @@ compileDecl t (Init ident expr) = do
 compileStm :: Stmt -> CP ()
 compileStm (SType typ stm) = do
 	case stm of
-		Empty 			-> undefined
+		Empty 			-> fail $ "Trying to compile empty statement."--undefined
 		BStmt (Block stmts) 	-> mapM_ compileStm stmts
 			
 		Decl  t itmList		-> mapM_ (compileDecl t) itmList
 		  			
 		Ass name expr		-> do
-			compileExp expr
+			compileExp typ expr
 			(local, typ) <- getVar name
 			putInstruction $ Store typ local
 		     
@@ -298,13 +311,13 @@ compileStm (SType typ stm) = do
 		   
 		Ret  expr     		-> case typ of
 			Int -> do
-				compileExp expr
+				compileExp typ expr
 				putInstruction IReturn
 			Doub -> do
-				compileExp expr
+				compileExp typ expr
 				putInstruction DReturn
 			Bool -> do
-				compileExp expr
+				compileExp typ expr
 				putInstruction IReturn
 			otherwise -> undefined
 		 
@@ -316,7 +329,7 @@ compileStm (SType typ stm) = do
 		 
 		While expr stmt		-> undefined
   		 
-		SExp exprs		-> compileExp exprs
+		SExp exprs		-> compileExp typ exprs
 
 
 -- iterate all the statements in a function definition and compile them
@@ -396,6 +409,14 @@ transJasmine instr = do
 			Doub -> "  dload " ++ (show i)
 			Bool -> "  iload " ++ (show i)
 		Increase local i -> "  iinc " ++ (show local) ++ " " ++ (show i)
+		Add typ -> case typ of 
+			Int -> "  iadd"
+			Doub -> "  dadd"
+			otherwise -> fail $ "No add operator for " ++ (show typ)
+		Sub typ -> case typ of 
+			Int -> "  isub"
+			Doub -> "  dsub"
+			otherwise -> fail $ "No subtract operator for " ++ (show typ)
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
@@ -416,6 +437,7 @@ compileTree (Program defs) = do
 	
 	-- translate jasmine code to strings
 	pgm_code <- gets programCode
+	fail $ show pgm_code
 	mapM_ (transJasmineBlock) pgm_code
 	
 	-- compiledCode now has translated jasmine values
