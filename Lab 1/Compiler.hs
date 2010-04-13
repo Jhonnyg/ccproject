@@ -216,33 +216,38 @@ lookFun fName = do
 -}
 
 -- compile expressions
-compileExp :: Type -> Expr -> CP ()
-compileExp t expr = do
+compileExp :: Expr -> CP Type
+compileExp expr = do
 	case expr of
 		EVar name 		-> do
 			incrStack
 			(local, typ) <- getVar name
 			when (typ == Doub) incrStack
 			putInstruction (Load typ local)
+			return typ
 		ELitInt i 		-> do
 			incrStack
 			putInstruction (PushInt i)
+			return Int
 			
 		ELitDoub d 		-> 	do
 			incrStack
 			incrStack
 			putInstruction (PushDoub d)
+			return Doub
 			
 		ELitTrue		-> do
 			incrStack
 			putInstruction (PushInt 1)
+			return Int
 			
 		ELitFalse		->	 do
 			incrStack
 			putInstruction (PushInt 0)
+			return Int
 			
 		EApp ident@(Ident n) expList 		-> do
-			mapM (compileExp t) expList
+			mapM compileExp expList
 			mapM (\e -> decrStack) expList
 			
 			method_sig <- lookFun ident
@@ -251,10 +256,12 @@ compileExp t expr = do
 					when (ret /= Void) incrStack -- only increase stack if we the function returns something
 					clname <- gets classname
 					putInstruction $ FunctionCall (clname ++ "/" ++ n) args ret
+					return ret
 					
 				(External (args, ret)) -> do
 					when (ret /= Void) incrStack -- only increase stack if we the function returns something
 					putInstruction $ FunctionCallExternal n args ret
+					return ret
 				
 		EAppS (Ident "printString") str -> undefined
 		Neg expr		-> undefined
@@ -263,8 +270,8 @@ compileExp t expr = do
 		Not expr		-> undefined
 		EMul e0 op e1		-> undefined
 		EAdd e0 op e1		-> do
-			compileExp t e1
-			compileExp t e0
+			t <- compileExp e1
+			compileExp e0
 			decrStack
 			when (t == Doub) decrStack
 			case op of 
@@ -272,6 +279,7 @@ compileExp t expr = do
 								putInstruction $ Add t
 				otherwise -> do
 								putInstruction $ Sub t
+			return t
 		ERel e0 (EQU) e1 	-> undefined
 		ERel e0 op e1		-> undefined
 		EAnd e0 e1		-> undefined
@@ -283,7 +291,7 @@ compileDecl t (NoInit ident) = addVar t ident
 compileDecl t (Init ident expr) = do
 	addVar t ident
 	(local,_) <- getVar ident
-	compileExp t expr
+	compileExp expr
 	putInstruction $ (Store t local)
 
 
@@ -297,7 +305,7 @@ compileStm (SType typ stm) = do
 		Decl  t itmList		-> mapM_ (compileDecl t) itmList
 		  			
 		Ass name expr		-> do
-			compileExp typ expr
+			compileExp expr
 			(local, typ) <- getVar name
 			putInstruction $ Store typ local
 		     
@@ -311,13 +319,13 @@ compileStm (SType typ stm) = do
 		   
 		Ret  expr     		-> case typ of
 			Int -> do
-				compileExp typ expr
+				compileExp expr
 				putInstruction IReturn
 			Doub -> do
-				compileExp typ expr
+				compileExp expr
 				putInstruction DReturn
 			Bool -> do
-				compileExp typ expr
+				compileExp expr
 				putInstruction IReturn
 			otherwise -> undefined
 		 
@@ -329,7 +337,9 @@ compileStm (SType typ stm) = do
 		 
 		While expr stmt		-> undefined
   		 
-		SExp exprs		-> compileExp typ exprs
+		SExp exprs		-> do
+			compileExp exprs
+			return ()
 
 
 -- iterate all the statements in a function definition and compile them
@@ -437,7 +447,7 @@ compileTree (Program defs) = do
 	
 	-- translate jasmine code to strings
 	pgm_code <- gets programCode
-	fail $ show pgm_code
+	--fail $ show pgm_code
 	mapM_ (transJasmineBlock) pgm_code
 	
 	-- compiledCode now has translated jasmine values
