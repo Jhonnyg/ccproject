@@ -247,7 +247,22 @@ compileExp expr = do
 				otherwise -> do
 								putInstruction $ Sub t
 			return t
-		ERel e0 (EQU) e1 	-> undefined
+		ERel e0 (EQU) e1 	-> do
+			t <- compileExp e0
+			compileExp e1
+			let label_not = "lab" ++ (show getLabel)
+			let label_end = "lab" ++ (show getLabel)
+			
+		{-	putInstuction $ 
+
+			ifneq not
+			  push 1
+		 	  goto end
+		        not:
+			  push 0
+			end: -}
+
+			return t
 		ERel e0 op e1		-> undefined
 		EAnd e0 e1		-> do
 			t <- compileExp e0
