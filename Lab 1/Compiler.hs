@@ -342,18 +342,28 @@ compileStm (SType typ stm) = do
 			new_label_id <- getLabel
 			let new_label = "lab" ++ (show new_label_id)
 			
-			-- compare value
-			--incrStack
-			--putInstruction $ PushInt 1
-			
-			-- compare expr
+			-- compare expression
 			compileExp expr
 			
 			putInstruction $ IfEq new_label
 			compileStm stmt
 			putInstruction $ Label new_label
 		   
-		CondElse  expr ifs els  -> undefined
+		CondElse  expr ifs els  -> do
+			label_else_id <- getLabel
+			label_end_id <- getLabel
+			let label_else = "lab" ++ (show label_else_id)
+			let label_end = "lab" ++ (show label_end_id)
+			
+			-- compile expression
+			compileExp expr
+			
+			putInstruction $ IfEq label_else
+			compileStm ifs
+			putInstruction $ Goto label_end
+			putInstruction $ Label label_else
+			compileStm els
+			putInstruction $ Label label_end
 		 
 		While expr stmt		-> do
 			label_id_1 <- getLabel

@@ -4,17 +4,22 @@ int main() {
 	
 	if (a)
 	{
-		printString("IMMA BIN STROKIN' MY HARBL");
-		printInt(1337);
+		printString("This should be visible!");
+	} else {
+		printString("This should not be visible!");
 	}
 	
-	//int i;
+	printString("This should always be visible!");
+	
+	/*int i = 0;
 	boolean b = true;
 	while (b)
 	{
 		printString("LOLLLLLLLLLLLLLLLL");
-		b = false;
-	}
+		i++;
+		if (i == 4)
+			b = false;
+	}*/
 	
 	return 0;
 }
