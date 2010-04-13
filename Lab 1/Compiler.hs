@@ -47,6 +47,9 @@ data JasminInstr =
 	| Or
 	| IfEq String
 	| IfCmpEq String
+	| IfCmpGt String
+	| IfCmpLt String
+	| IfCmpNe String
 	| IfNe String
 	| Negation Type
 	deriving (Show)
@@ -244,12 +247,10 @@ compileExp expr = do
 			decrStack
 			when (t == Doub) decrStack
 			case op of 
-				Plus -> do
-								putInstruction $ Add t
-				otherwise -> do
-								putInstruction $ Sub t
+				Plus 		-> putInstruction $ Add t
+				otherwise 	-> putInstruction $ Sub t
 			return t
-		ERel e0 (EQU) e1 	-> do
+		ERel e0 op e1 		-> do
 			t <- compileExp e0
 			compileExp e1
 			label_id_1 <- getLabel
@@ -258,7 +259,18 @@ compileExp expr = do
 			let label_yes = "lab" ++ (show label_id_1)
 			let label_end = "lab" ++ (show label_id_2)
 
-			putInstruction $ IfCmpEq label_yes
+			case op of 
+				EQU -> putInstruction $ IfCmpEq label_yes
+				NE  -> putInstruction $ IfCmpNe label_yes 
+				GE  -> do
+					putInstruction $ IfCmpEq label_yes
+					putInstruction $ IfCmpGt label_yes
+			 	GTH -> putInstruction $ IfCmpGt label_yes
+				LE  -> do
+					putInstruction $ IfCmpEq label_yes
+					putInstruction $ IfCmpLt label_yes
+				LTH -> putInstruction $ IfCmpLt label_yes
+
 			putInstruction $ PushInt 0
 			putInstruction $ Goto label_end
 			putInstruction $ Label label_yes
@@ -266,18 +278,8 @@ compileExp expr = do
 			putInstruction $ Label label_end 
 			
 			incrStack
-			
-		{-	putInstuction $ 
-
-			ifeq yes
-			  push 0
-		 	  goto end
-		        yes:
-			  push 1
-			end: -}
-
 			return t
-		ERel e0 op e1		-> undefined
+
 		EAnd e0 e1		-> do
 			t <- compileExp e0
 			compileExp e1
@@ -479,6 +481,9 @@ transJasmine instr = do
 		IfEq lbl -> "  ifeq " ++ lbl
 		IfNe lbl -> "  ifne " ++ lbl
 		IfCmpEq lbl -> "  if_icmpeq " ++ lbl
+		IfCmpGt lbl -> "  if_icmpgt " ++ lbl
+		IfCmpLt lbl -> "  if_icmplt " ++ lbl
+		IfCmpNe lbl -> "  if_icmpne " ++ lbl
 		Negation typ -> case typ of
 			Int -> "  ineg"
 			Doub -> "  dneg"
