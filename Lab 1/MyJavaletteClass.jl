@@ -1,6 +1,6 @@
 
 int main() {
-	boolean a = true;
+	/*boolean a = true;
 	
 	if (a)
 	{
@@ -10,16 +10,17 @@ int main() {
 	}
 	
 	printString("This should always be visible!");
+	*/
 	
-	/*int i = 0;
-	boolean b = true;
-	while (b)
+	//int i = 0;
+	/*boolean b = true;
+	while (!b)
 	{
 		printString("LOLLLLLLLLLLLLLLLL");
-		i++;
-		if (i == 4)
-			b = false;
+		//i++;
 	}*/
+	
+	printDouble(1.0/2.0);
 	
 	return 0;
 }
