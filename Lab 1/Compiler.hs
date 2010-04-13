@@ -251,16 +251,25 @@ compileExp expr = do
 		ERel e0 (EQU) e1 	-> do
 			t <- compileExp e0
 			compileExp e1
-			let label_not = "lab" ++ (show getLabel)
+			let label_yes = "lab" ++ (show getLabel)
 			let label_end = "lab" ++ (show getLabel)
+
+			putInstruction $ IfEq label_yes
+			putInstruction $ PushInt 0
+			putInstruction $ Goto label_end
+			putInstruction $ Label label_yes
+			putInstruction $ PushInt 1
+			putInstruction $ Label label_end 
+			
+			incrStack
 			
 		{-	putInstuction $ 
 
-			ifneq not
-			  push 1
-		 	  goto end
-		        not:
+			ifeq yes
 			  push 0
+		 	  goto end
+		        yes:
+			  push 1
 			end: -}
 
 			return t
