@@ -45,6 +45,7 @@ data JasminInstr =
 	| Mul Type
 	| And
 	| Or
+	| Negation Type
 	deriving (Show)
 
 
@@ -217,10 +218,12 @@ compileExp expr = do
 			putInstruction $ FunctionCallPrintString str
 			return Void
 			
-		Neg expr		-> undefined
-			-- exprVal <- compileExp expr
-			-- push - exprVal to stack
+		Neg expr		-> do
+			t <- compileExp expr
+			putInstruction $ Negation t
+			return t
 		Not expr		-> undefined
+
 		EMul e0 op e1		-> do
 			t <- compileExp e0
 			compileExp e1
@@ -406,6 +409,10 @@ transJasmine instr = do
 			otherwise -> fail $ "No multiplication operator for " ++ (show typ)
 		And -> "  iand"
 		Or  -> "  ior"
+		Negation typ -> case typ of
+			Int -> "  ineg"
+			Doub -> "  dneg"
+			otherwise -> fail $ "Unable to negate type " ++ (show typ)
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
