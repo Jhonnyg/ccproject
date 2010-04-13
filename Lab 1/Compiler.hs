@@ -41,6 +41,7 @@ data JasminInstr =
 	| FunctionCallExternal String [Type] Type
 	| Add Type
 	| Sub Type
+	| Mul Type
 	deriving (Show)
 
 
@@ -213,7 +214,17 @@ compileExp expr = do
 			-- exprVal <- compileExp expr
 			-- push - exprVal to stack
 		Not expr		-> undefined
-		EMul e0 op e1		-> undefined
+		EMul e0 op e1		-> do
+			t <- compileExp e0
+			compileExp e1
+			decrStack
+			when (t == Doub) decrStack
+			case op of 
+				Times 		-> putInstruction $ Mul t
+				Mod   		-> undefined 
+				otherwise 	-> undefined
+			return t
+
 		EAdd e0 op e1		-> do
 			t <- compileExp e1
 			compileExp e0
@@ -369,6 +380,10 @@ transJasmine instr = do
 			Int -> "  isub"
 			Doub -> "  dsub"
 			otherwise -> fail $ "No subtract operator for " ++ (show typ)
+		Mul typ -> case typ of
+			Int -> "  imul"
+			Doub -> "  dmul"
+			otherwise -> fail $ "No multiplication operator for " ++ (show typ)
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
