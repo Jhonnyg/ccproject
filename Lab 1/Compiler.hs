@@ -233,10 +233,10 @@ compileExp expr = do
 			let label_end = "lab" ++ (show label_id_2) 
 			
 			putInstruction $ IfEq label_yes
-			putInstruction $ PushInt 1
+			putInstruction $ PushInt 0
 			putInstruction $ Goto label_end
 			putInstruction $ Label label_yes
-			putInstruction $ PushInt 0
+			putInstruction $ PushInt 1
 			putInstruction $ Label label_end			
 
 			
