@@ -314,8 +314,8 @@ compileStm (SType typ stm) = do
 			let new_label = "lab" ++ (show new_label_id)
 			
 			-- compare value
-			incrStack
-			putInstruction $ PushInt 1
+			--incrStack
+			--putInstruction $ PushInt 1
 			
 			-- compare expr
 			compileExp expr
@@ -425,7 +425,7 @@ transJasmine instr = do
 			otherwise -> fail $ "No multiplication operator for " ++ (show typ)
 		And -> "  iand"
 		Or  -> "  ior"
-		IfCond lbl -> "  if_icmpne " ++ lbl
+		IfCond lbl -> "  ifeq " ++ lbl
 		Negation typ -> case typ of
 			Int -> "  ineg"
 			Doub -> "  dneg"
