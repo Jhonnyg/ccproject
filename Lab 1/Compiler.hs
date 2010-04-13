@@ -46,6 +46,7 @@ data JasminInstr =
 	| And
 	| Or
 	| IfEq String
+	| IfCmpEq String
 	| IfNe String
 	| Negation Type
 	deriving (Show)
@@ -257,7 +258,7 @@ compileExp expr = do
 			let label_yes = "lab" ++ (show label_id_1)
 			let label_end = "lab" ++ (show label_id_2)
 
-			putInstruction $ IfEq label_yes
+			putInstruction $ IfCmpEq label_yes
 			putInstruction $ PushInt 0
 			putInstruction $ Goto label_end
 			putInstruction $ Label label_yes
@@ -467,6 +468,7 @@ transJasmine instr = do
 		Goto lbl -> "  goto " ++ lbl
 		IfEq lbl -> "  ifeq " ++ lbl
 		IfNe lbl -> "  ifne " ++ lbl
+		IfCmpEq lbl -> "  if_icmpeq " ++ lbl
 		Negation typ -> case typ of
 			Int -> "  ineg"
 			Doub -> "  dneg"
