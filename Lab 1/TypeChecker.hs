@@ -239,8 +239,8 @@ checkStm stm = do
 		While expr stmt		->   do
   		  exptype <- inferExp expr
   		  when (exptype /= Bool) (fail $ "Conditional expression for while-statement not of boolean type: " ++ (show exptype))
-  		  checkStm stmt
-  		  return (SType Void stm)
+  		  stmt' <- checkStm stmt
+  		  return (SType Void (While expr stmt'))
   		  
 		SExp exprs		-> do
 		  typ <- inferExp exprs
