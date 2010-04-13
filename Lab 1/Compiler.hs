@@ -326,7 +326,18 @@ compileStm (SType typ stm) = do
 		   
 		CondElse  expr ifs els  -> undefined
 		 
-		While expr stmt		-> undefined
+		While expr stmt		-> do
+			label_id_1 <- getLabel
+			label_id_2 <- getLabel
+			let label_1 = "lab" ++ (show label_1)
+			let label_2 = "lab" ++ (show label_2)
+
+			putInstruction $ Goto label_2
+			putInstruction $ Label label_1
+			compileStm stmt
+			putInstruction $ Label label_2
+			compileExp expr	
+			putInstruction $ IfCond label_1
   		 
 		SExp exprs		-> do
 			compileExp exprs
@@ -426,11 +437,12 @@ transJasmine instr = do
 		And -> "  iand"
 		Or  -> "  ior"
 		IfCond lbl -> "  if_icmpne " ++ lbl
+		Goto lbl -> "  goto " ++ lbl
 		Negation typ -> case typ of
 			Int -> "  ineg"
 			Doub -> "  dneg"
 			otherwise -> fail $ "Unable to negate type " ++ (show typ)
-		otherwise -> "undefined"
+		--otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
 transJasmineBlock :: [JasminInstr] -> CP ()
