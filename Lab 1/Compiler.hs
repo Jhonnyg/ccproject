@@ -273,14 +273,15 @@ compileExp expr = do
 			-- push - exprVal to stack
 		Not expr		-> undefined
 		EMul e0 op e1		-> do
-			compileExp t e0
-			compileExp t e1
+			t <- compileExp e0
+			compileExp e1
 			decrStack
 			when (t == Doub) decrStack
 			case op of 
 				Times 		-> putInstruction $ Mul t
 				Mod   		-> undefined 
 				otherwise 	-> undefined
+			return t
 
 		EAdd e0 op e1		-> do
 			t <- compileExp e1
