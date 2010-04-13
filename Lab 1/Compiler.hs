@@ -225,7 +225,29 @@ compileExp expr = do
 			t <- compileExp expr
 			putInstruction $ Negation t
 			return t
-		Not expr		-> undefined
+		Not expr		-> do
+			t <- compileExp expr
+			label_id_1 <- getLabel
+			label_id_2 <- getLabel
+			let label_yes = "lab" ++ (show label_id_1)
+			let label_end = "lab" ++ (show label_id_2) 
+			
+			putInstruction $ IfEq label_yes
+			putInstruction $ PushInt 1
+			putInstruction $ Goto label_end
+			putInstruction $ Label label_yes
+			putInstruction $ PushInt 0
+			putInstruction $ Label label_end			
+
+			
+			{-ifeq lol
+			push 1
+			goto end
+			lol:
+			push 0
+			end:-}
+			
+			return t
 
 		EMul e0 op e1		-> do
 			t <- compileExp e0
