@@ -22,6 +22,7 @@ int main() {
 	
 	printDouble(1.0/2.0);
 	printInt(4/2);
+	printDouble(12.0 % 2.4);
 	
 	return 0;
 }

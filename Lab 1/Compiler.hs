@@ -43,6 +43,7 @@ data JasminInstr =
 	| Add Type
 	| Sub Type
 	| Mul Type
+	| Modu Type
 	| Divide Type
 	| And
 	| Or
@@ -257,7 +258,7 @@ compileExp expr = do
 			when (t == Doub) decrStack
 			case op of 
 				Times 		-> putInstruction $ Mul t
-				Mod   		-> undefined
+				Mod   		-> putInstruction $ Modu t
 				otherwise 	-> putInstruction $ Divide t
 			return t
 
@@ -483,6 +484,9 @@ transJasmine instr = do
 			Int -> "  imul"
 			Doub -> "  dmul"
 			otherwise -> fail $ "No multiplication operator for " ++ (show typ)
+		Modu typ -> case typ of 
+			Int -> "  irem"
+			Doub -> "  drem"
 		Divide typ -> case typ of
 			Doub -> "  ddiv"
 			otherwise -> "  idiv"
