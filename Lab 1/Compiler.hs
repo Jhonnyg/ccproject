@@ -45,6 +45,7 @@ data JasminInstr =
 	| Mul Type
 	| And
 	| Or
+	| IfCond String
 	deriving (Show)
 
 
@@ -305,7 +306,20 @@ compileStm (SType typ stm) = do
 		 
 		VRet     		-> putInstruction VReturn
 		   
-		Cond expr stmt		-> undefined
+		Cond expr stmt		-> do
+			new_label_id <- getLabel
+			let new_label = "lab" ++ (show new_label_id)
+			
+			-- compare value
+			incrStack
+			putInstruction $ PushInt 1
+			
+			-- compare expr
+			compileExp expr
+			
+			putInstruction $ IfCond new_label
+			compileStm stmt
+			putInstruction $ Label new_label
 		   
 		CondElse  expr ifs els  -> undefined
 		 
@@ -314,6 +328,8 @@ compileStm (SType typ stm) = do
 		SExp exprs		-> do
 			compileExp exprs
 			return ()
+
+--compileStm lol = fail $ show lol
 
 
 -- iterate all the statements in a function definition and compile them
@@ -406,6 +422,7 @@ transJasmine instr = do
 			otherwise -> fail $ "No multiplication operator for " ++ (show typ)
 		And -> "  iand"
 		Or  -> "  ior"
+		IfCond lbl -> "  if_icmpne " ++ lbl
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad

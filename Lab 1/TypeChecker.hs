@@ -226,8 +226,8 @@ checkStm stm = do
 		Cond expr stmt		-> do
 		  exptype <- inferExp expr
 		  when (exptype /= Bool) (fail $ "Conditional expression for if-else-statement  not of boolean type: " ++ (show exptype))
-		  checkStm stmt
-		  return (SType Void stm)
+		  stmt' <- checkStm stmt
+		  return (SType Void (Cond expr stmt'))
 		    
 		CondElse  expr ifs els  -> do
 		  exptype <- inferExp expr
