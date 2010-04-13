@@ -70,9 +70,12 @@ addVar :: Type -> Ident -> CP ()
 addVar t n = do
 	v:vs <- gets variables
 	next_index <- gets nextVarIndex
+	case t of
+		Doub -> modify (\e -> e { nextVarIndex = next_index + 2 })
+		otherwise -> modify (\e -> e { nextVarIndex = next_index + 1 })
 	when (Map.member n v) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top context"
 	let v' = Map.insert n (next_index, t) v
-	modify (\e -> e { variables = v':vs, nextVarIndex = next_index + 1} )
+	modify (\e -> e { variables = v':vs } )
 	
 getVar :: Ident -> CP (Integer, Type)
 getVar n = do

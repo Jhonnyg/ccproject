@@ -2,14 +2,14 @@
 int main() {
 	int a;
 	int b = 1;
-	int c;
+	double c;
 	
 	a = 2;
 	a--;
 	
-	c = a+b;
+	c = readDouble();
 	
-	printInt(c);
+	printDouble(c);
 	return 0;
 }
 
