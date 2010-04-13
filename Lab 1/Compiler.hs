@@ -251,8 +251,11 @@ compileExp expr = do
 		ERel e0 (EQU) e1 	-> do
 			t <- compileExp e0
 			compileExp e1
-			let label_yes = "lab" ++ (show getLabel)
-			let label_end = "lab" ++ (show getLabel)
+			label_id_1 <- getLabel
+			label_id_2 <- getLabel			
+
+			let label_yes = "lab" ++ (show label_id_1)
+			let label_end = "lab" ++ (show label_id_2)
 
 			putInstruction $ IfEq label_yes
 			putInstruction $ PushInt 0
