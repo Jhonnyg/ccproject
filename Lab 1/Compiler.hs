@@ -45,7 +45,8 @@ data JasminInstr =
 	| Mul Type
 	| And
 	| Or
-	| IfCond String
+	| IfEq String
+	| IfNe String
 	| Negation Type
 	deriving (Show)
 
@@ -335,7 +336,7 @@ compileStm (SType typ stm) = do
 			-- compare expr
 			compileExp expr
 			
-			putInstruction $ IfCond new_label
+			putInstruction $ IfEq new_label
 			compileStm stmt
 			putInstruction $ Label new_label
 		   
@@ -344,15 +345,15 @@ compileStm (SType typ stm) = do
 		While expr stmt		-> do
 			label_id_1 <- getLabel
 			label_id_2 <- getLabel
-			let label_1 = "lab" ++ (show label_1)
-			let label_2 = "lab" ++ (show label_2)
+			let label_1 = "lab" ++ (show label_id_1)
+			let label_2 = "lab" ++ (show label_id_2)
 
 			putInstruction $ Goto label_2
 			putInstruction $ Label label_1
 			compileStm stmt
 			putInstruction $ Label label_2
 			compileExp expr	
-			putInstruction $ IfCond label_1
+			putInstruction $ IfNe label_1
   		 
 		SExp exprs		-> do
 			compileExp exprs
@@ -452,7 +453,8 @@ transJasmine instr = do
 		And -> "  iand"
 		Or  -> "  ior"
 		Goto lbl -> "  goto " ++ lbl
-		IfCond lbl -> "  ifeq " ++ lbl
+		IfEq lbl -> "  ifeq " ++ lbl
+		IfNe lbl -> "  ifne " ++ lbl
 		Negation typ -> case typ of
 			Int -> "  ineg"
 			Doub -> "  dneg"
