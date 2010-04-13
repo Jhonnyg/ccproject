@@ -42,6 +42,8 @@ data JasminInstr =
 	| Add Type
 	| Sub Type
 	| Mul Type
+	| And
+	| Or
 	deriving (Show)
 
 
@@ -296,8 +298,19 @@ compileExp expr = do
 			return t
 		ERel e0 (EQU) e1 	-> undefined
 		ERel e0 op e1		-> undefined
-		EAnd e0 e1		-> undefined
-		EOr e0 e1		-> undefined
+		EAnd e0 e1		-> do
+			t <- compileExp e0
+			compileExp e1
+			decrStack
+			putInstruction $ And
+			return t
+			
+		EOr e0 e1		-> do
+			t <- compileExp e0
+			compileExp e1
+			decrStack
+			putInstruction $ Or
+			return t
 
 -- compile variable declarations
 compileDecl :: Type -> Item -> CP ()
@@ -445,6 +458,8 @@ transJasmine instr = do
 			Int -> "  imul"
 			Doub -> "  dmul"
 			otherwise -> fail $ "No multiplication operator for " ++ (show typ)
+		And -> "  iand"
+		Or  -> "  ior"
 		otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
