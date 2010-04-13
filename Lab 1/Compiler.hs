@@ -43,7 +43,7 @@ data JasminInstr =
 	| Add Type
 	| Sub Type
 	| Mul Type
-	| Divide
+	| Divide Type
 	| And
 	| Or
 	| IfEq String
@@ -258,7 +258,7 @@ compileExp expr = do
 			case op of 
 				Times 		-> putInstruction $ Mul t
 				Mod   		-> undefined
-				otherwise 	-> putInstruction $ Divide
+				otherwise 	-> putInstruction $ Divide t
 			return t
 
 		EAdd e0 op e1		-> do
@@ -483,7 +483,9 @@ transJasmine instr = do
 			Int -> "  imul"
 			Doub -> "  dmul"
 			otherwise -> fail $ "No multiplication operator for " ++ (show typ)
-		Divide -> "  ddiv"
+		Divide typ -> case typ of
+			Doub -> "  ddiv"
+			otherwise -> "  idiv"
 		And -> "  iand"
 		Or  -> "  ior"
 		Goto lbl -> "  goto " ++ lbl

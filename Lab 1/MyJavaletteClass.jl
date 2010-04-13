@@ -21,6 +21,7 @@ int main() {
 	}*/
 	
 	printDouble(1.0/2.0);
+	printInt(4/2);
 	
 	return 0;
 }
