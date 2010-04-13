@@ -175,9 +175,9 @@ checkStm stm = do
 		Empty 			-> return Empty
 		BStmt (Block stmts) 	-> do
 			pushContext
-			mapM_ (checkStm) stmts
+			stmts' <- mapM (checkStm) stmts
 			popContext
-			return (SType Void stm)
+			return (SType Void (BStmt (Block stmts')))
 			
 		Decl  t itmList		-> do
 			mapM_ (addItem t) itmList
