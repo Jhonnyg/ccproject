@@ -378,7 +378,23 @@ compileExp expr = do
 
 -- compile variable declarations
 compileDecl :: Type -> Item -> CP ()
-compileDecl t (NoInit ident) = addVar t ident
+compileDecl t (NoInit ident) = do
+	addVar t ident
+	(local,_) <- getVar ident
+	case t of 
+		Doub 	  -> do
+			putInstruction $ PushDoub 0.0
+			incrStack
+			incrStack
+			putInstruction $ (Store t local)
+			decrStack
+			decrStack
+		otherwise -> do
+			putInstruction $ PushInt 0
+			incrStack
+			putInstruction $ (Store t local)
+			decrStack
+	
 compileDecl t (Init ident expr) = do
 	addVar t ident
 	(local,_) <- getVar ident
