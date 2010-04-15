@@ -12,8 +12,8 @@ import TypeChecker
 
 import Compiler
 
-check :: String -> IO () 
-check s = case pProgram (myLexer s) of
+check :: String -> String -> IO () 
+check n s = case pProgram (myLexer s) of
             Bad err  -> do putStrLn "SYNTAX ERROR"
                            putStrLn err
                            exitFailure 
@@ -24,7 +24,7 @@ check s = case pProgram (myLexer s) of
                           Ok tree' -> do
 																					--putStrLn "Typecheck: OK!"
 																					--fail $ (show tree')
-																					case compile tree' of
+																					case compile n tree' of
 																						Bad err -> do
 																													putStrLn "COMPILE ERROR"
 																													putStrLn err
@@ -37,7 +37,10 @@ main :: IO ()
 main = do args <- getArgs
           case args of
             [file] -> do
-		readFile file >>= check
-		--putStrLn file
+		readFile file >>= check (getfilename file)
+		--putStrLn (getfilename file)
             _      -> do putStrLn "Usage: main <SourceFile>"
                          exitFailure
+
+getfilename :: String -> String
+getfilename n = reverse $ takeWhile (\e -> e /= '/') $ reverse (takeWhile (\e -> e /= '.') n)

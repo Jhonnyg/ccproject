@@ -129,6 +129,7 @@ clearContexSpec :: CP ()
 clearContexSpec = do
 	modify (\e -> e { variables = [Map.empty],
 										nextVarIndex = 0,
+										nextLabelIndex = 0,
 	                  currentStackDepth = 0,
 	                  maxStackDepth = 0,
 	                  codeStack = []})
@@ -167,8 +168,8 @@ emptyEnv name = Env {
 																".end method"] }
 
 -- main entry point for compiler
-compile :: Program -> Err [String]
-compile p = (evalStateT . unCPM) (compileTree p) $ emptyEnv "MyJavaletteClass"
+compile :: String -> Program -> Err [String]
+compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 
 -- compile expressions
 compileExp :: Expr -> CP Type
@@ -318,7 +319,12 @@ compileStm :: Stmt -> CP ()
 compileStm (SType typ stm) = do
 	case stm of
 		Empty 			-> fail $ "Trying to compile empty statement."--undefined
-		BStmt (Block stmts) 	-> mapM_ compileStm stmts
+		BStmt (Block stmts) 	-> do
+			old_vars <- gets variables
+			modify (\e -> e { variables = Map.empty : old_vars } )
+			mapM_ compileStm stmts
+			v:vs <- gets variables
+			modify (\e -> e { variables = vs })
 			
 		Decl  t itmList		-> mapM_ (compileDecl t) itmList
 		  			
@@ -451,13 +457,13 @@ transJasmine instr = do
 		IReturn -> "  ireturn"
 		DReturn -> "  dreturn"
 		VReturn -> "  return"
-		StartMethod name args rettype stack locals -> "\n.method public static " ++ name ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype) ++ 
+		StartMethod name args rettype stack locals -> "\n.method public static " ++ name ++ "(" ++ ( (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype) ++ 
 																									"\n  .limit locals " ++ (show locals) ++
 																									"\n  .limit stack " ++ (show stack)
 		EndMethod -> ".end method"
 		PushInt i -> "  ldc " ++ (show i)
 		PushDoub d -> "  ldc2_w " ++ (show d)
-		FunctionCall n args ret -> "  invokestatic " ++ (map (\e -> if (e == '.') then '/' else e) n) ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
+		FunctionCall n args ret -> "  invokestatic " ++ (map (\e -> if (e == '.') then '/' else e) n) ++ "(" ++ ( (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
 		FunctionCallExternal n args ret -> "  invokestatic Runtime/" ++ n ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
 		FunctionCallPrintString str -> "  ldc " ++ (show str) ++
 																	"\n  invokestatic Runtime/printString(Ljava/lang/String;)V"
