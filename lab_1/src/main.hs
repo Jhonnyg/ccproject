@@ -1,6 +1,7 @@
 import System.Environment (getArgs)
 import System.Exit (exitFailure, exitSuccess)
 import System.FilePath
+import System.IO
 import System
 
 import Absjavalette
@@ -18,17 +19,22 @@ import List (intersperse)
 
 check :: String -> String -> IO () 
 check n s = case pProgram (myLexer s) of
-            Bad err  -> do putStrLn "SYNTAX ERROR"
-                           putStrLn err
-                           exitFailure 
+            Bad err  -> do
+														hPutStr stderr "ERROR"
+														putStrLn "SYNTAX ERROR"
+														putStrLn err
+														exitFailure 
             Ok  tree -> case typecheck tree of
-                          Bad err -> do putStrLn "TYPE ERROR"
-                                        putStrLn err
-                                        exitFailure 
+                          Bad err -> do
+																				hPutStr stderr "ERROR"
+																				putStrLn "TYPECHECK ERROR"
+																				putStrLn err
+																				exitFailure 
                           Ok tree' -> do
 																					let class_name = takeBaseName n
 																					case compile class_name tree' of
 																						Bad err -> do
+																													hPutStr stderr "ERROR"
 																													putStrLn "COMPILE ERROR"
 																													putStrLn err
 																													exitFailure
@@ -36,7 +42,6 @@ check n s = case pProgram (myLexer s) of
 																														--putStrLn "Compile: OK"
 																														--mapM_ (putStrLn) prg
 																														let jasmine_code = concat $ intersperse "\n" prg
-																														--putStrLn ((takeDirectory n) ++ "/" ++ class_name ++ ".j")
 																														
 																														-- write jasmin code
 																														let output_file = ((takeDirectory n) ++ "/" ++ class_name ++ ".j")
@@ -44,8 +49,10 @@ check n s = case pProgram (myLexer s) of
 																														
 																														-- run jasmin on output file
 																														let jasmin_flags = " -d " ++ ((takeDirectory n) ++ "/ ")
-																														putStrLn $ "java -jar lib/jasmin.jar" ++ jasmin_flags ++ output_file
 																														system $ "java -jar lib/jasmin.jar" ++ jasmin_flags ++ output_file
+																														
+																														-- ALRIGHT!
+																														hPutStr stderr "OK"
 																														exitSuccess
 
 main :: IO ()
