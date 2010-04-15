@@ -1,5 +1,7 @@
 import System.Environment (getArgs)
-import System.Exit (exitFailure)
+import System.Exit (exitFailure, exitSuccess)
+import System.FilePath
+import System
 
 import Absjavalette
 import Lexjavalette
@@ -36,10 +38,17 @@ check n s = case pProgram (myLexer s) of
 																														--putStrLn "Compile: OK"
 																														--mapM_ (putStrLn) prg
 																														let jasmine_code = concat $ intersperse "\n" prg
-																														putStrLn ((takeDirectory n) ++ "/" ++ class_name ++ ".j")
-																														--writeFile ((takeDirectory n) ++ "/" ++ class_name ++ ".j") jasmine_code
-																														--system 
-																														--putStrLn $ concat jasmine_code
+																														--putStrLn ((takeDirectory n) ++ "/" ++ class_name ++ ".j")
+																														
+																														-- write jasmin code
+																														let output_file = ((takeDirectory n) ++ "/" ++ class_name ++ ".j")
+																														writeFile output_file jasmine_code
+																														
+																														-- run jasmin on output file
+																														let jasmin_flags = " -d " ++ ((takeDirectory n) ++ "/ ")
+																														putStrLn $ "java -jar lib/jasmin.jar" ++ jasmin_flags ++ output_file
+																														system $ "java -jar lib/jasmin.jar" ++ jasmin_flags ++ output_file
+																														exitSuccess
 
 main :: IO ()
 main = do args <- getArgs
