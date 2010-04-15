@@ -25,9 +25,7 @@ newtype CPM m a = CPM { unCPM :: StateT Env m a }
 type CP a = CPM Err a
 
 data JasminInstr = 
-	VReturn
-	| IReturn
-	| DReturn
+	Return Type
 	| StartMethod String [Type] Type Integer Integer
 	| Goto String
 	| Label String
@@ -50,7 +48,11 @@ data JasminInstr =
 	| IfEq String
 	| IfCmp RelOp String
 	| IfNe String
+	| DoubCmpG
+	| DoubCmpL
 	| Negation Type
+	| Pop
+	| Nop
 	deriving (Show)
 
 
@@ -204,20 +206,31 @@ compileExp expr = do
 			
 		EApp ident@(Ident n) expList 		-> do
 			mapM compileExp expList
-			mapM (\e -> decrStack) expList
+			--mapM (\e -> decrStack) expList
 			
 			method_sig <- lookFun ident
 			case method_sig of
 				(Internal (args, ret)) -> do
+					mapM argDecrStack args
 					when (ret /= Void) incrStack -- only increase stack if we the function returns something
 					clname <- gets classname
 					putInstruction $ FunctionCall (clname ++ "/" ++ n) args ret
 					return ret
 					
 				(External (args, ret)) -> do
+					mapM argDecrStack args
 					when (ret /= Void) incrStack -- only increase stack if we the function returns something
 					putInstruction $ FunctionCallExternal n args ret
 					return ret
+				
+				where
+					argDecrStack :: Type -> CP ()
+					argDecrStack t = case t of
+						Doub -> do
+							decrStack
+							decrStack
+						Int -> decrStack
+						otherwise -> return ()
 				
 		EAppS (Ident "printString") str -> do
 			incrStack
@@ -264,8 +277,8 @@ compileExp expr = do
 			return t
 
 		EAdd e0 op e1		-> do
-			t <- compileExp e1
-			compileExp e0
+			t <- compileExp e0
+			compileExp e1
 			decrStack
 			when (t == Doub) decrStack
 			case op of 
@@ -280,7 +293,50 @@ compileExp expr = do
 
 			let label_yes = "lab" ++ (show label_id_1)
 			let label_end = "lab" ++ (show label_id_2)
-			putInstruction $ IfCmp op label_yes
+			
+			case t of
+				Doub -> case op of
+						EQU -> do
+							putInstruction $ DoubCmpG
+							decrStack
+							decrStack
+							decrStack
+							putInstruction $ IfEq label_yes
+						LE -> do
+							putInstruction $ DoubCmpL
+							decrStack
+							decrStack
+							putInstruction $ PushInt 0
+							putInstruction $ IfCmp LE label_yes
+						GE -> do
+							putInstruction $ DoubCmpG
+							decrStack
+							decrStack
+							putInstruction $ PushInt 0
+							putInstruction $ IfCmp GE label_yes
+						NE -> do
+							putInstruction $ DoubCmpG
+							decrStack
+							decrStack
+							decrStack
+							putInstruction $ IfCmp NE label_yes
+						GTH -> do
+							putInstruction $ DoubCmpG
+							decrStack
+							decrStack
+							putInstruction $ PushInt 1
+							putInstruction $ IfCmp EQU label_yes
+						LTH -> do
+							putInstruction $ DoubCmpL
+							decrStack
+							decrStack
+							putInstruction $ PushInt (-1)
+							putInstruction $ IfCmp EQU label_yes
+					
+				otherwise -> do
+					decrStack
+					decrStack
+					putInstruction $ IfCmp op label_yes
 			putInstruction $ PushInt 0
 			putInstruction $ Goto label_end
 			putInstruction $ Label label_yes
@@ -344,16 +400,16 @@ compileStm (SType typ stm) = do
 		Ret  expr     		-> case typ of
 			Int -> do
 				compileExp expr
-				putInstruction IReturn
+				putInstruction (Return Int)
 			Doub -> do
 				compileExp expr
-				putInstruction DReturn
+				putInstruction (Return Doub)
 			Bool -> do
 				compileExp expr
-				putInstruction IReturn
+				putInstruction (Return Int)
 			otherwise -> undefined
 		 
-		VRet     		-> putInstruction VReturn
+		VRet     		-> putInstruction (Return Void)
 		   
 		Cond expr stmt		-> do
 			new_label_id <- getLabel
@@ -375,12 +431,21 @@ compileStm (SType typ stm) = do
 			-- compile expression
 			compileExp expr
 			
+			decrStack
 			putInstruction $ IfEq label_else
 			compileStm ifs
-			putInstruction $ Goto label_end
+			code_stack <- gets codeStack
+			let last_stm = last code_stack
+			
+			case last_stm of
+				Return _ -> putInstruction Nop
+				otherwise -> putInstruction $ Goto label_end
 			putInstruction $ Label label_else
 			compileStm els
-			putInstruction $ Label label_end
+			
+			case last_stm of
+				Return _ -> putInstruction Nop
+				otherwise -> putInstruction $ Label label_end
 		 
 		While expr stmt		-> do
 			label_id_1 <- getLabel
@@ -454,9 +519,9 @@ transJasmineType Void = "V"
 transJasmine :: JasminInstr -> String
 transJasmine instr = do
 	case instr of 
-		IReturn -> "  ireturn"
-		DReturn -> "  dreturn"
-		VReturn -> "  return"
+		Return Int -> "  ireturn"
+		Return Doub -> "  dreturn"
+		Return Void -> "  return"
 		StartMethod name args rettype stack locals -> "\n.method public static " ++ name ++ "(" ++ ( (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype) ++ 
 																									"\n  .limit locals " ++ (show locals) ++
 																									"\n  .limit stack " ++ (show stack)
@@ -507,11 +572,15 @@ transJasmine instr = do
 			LTH -> "  if_icmplt " ++ lbl
 			NE -> "  if_icmpne " ++ lbl
 			GE -> "  if_icmpge " ++ lbl
-			LE -> "  if_icmple " ++ lbl			
+			LE -> "  if_icmple " ++ lbl
+		DoubCmpG -> "  dcmpg"
+		DoubCmpL -> "  dcmpl"
 		Negation typ -> case typ of
 			Int -> "  ineg"
 			Doub -> "  dneg"
 			otherwise -> fail $ "Unable to negate type " ++ (show typ)
+		Pop -> "  pop"
+		Nop -> ""
 		--otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
