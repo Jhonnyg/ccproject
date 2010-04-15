@@ -1,6 +1,8 @@
 import java.io.*;
+import java.util.Scanner;
 
 public class Runtime {
+	
 	public static void main(String[] args) {
 		System.out.println("Runtime library for Javalette language.");
 	}
@@ -20,6 +22,9 @@ public class Runtime {
 	
 	// Read functions
 	public static int readInt() {
+		Scanner s = new Scanner(System.in);
+		return s.nextInt();
+		/*
 		String line = null;
 		
 		try {
@@ -36,10 +41,13 @@ public class Runtime {
 		}
 		
 		return -1;
+		*/
 	}
 	
 	public static double readDouble() {
-		String line = null;
+		Scanner s = new Scanner(System.in);
+		return s.nextDouble();
+		/*String line = null;
 		
 		try {
 			BufferedReader is = new BufferedReader(new InputStreamReader(System.in));
@@ -55,6 +63,7 @@ public class Runtime {
 		}
 		
 		return -1.0;
+		*/
 	}
 	
 	

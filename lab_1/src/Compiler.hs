@@ -254,14 +254,6 @@ compileExp expr = do
 			putInstruction $ Label label_yes
 			putInstruction $ PushInt 1
 			putInstruction $ Label label_end			
-
-			
-			{-ifeq lol
-			push 1
-			goto end
-			lol:
-			push 0
-			end:-}
 			
 			return t
 
@@ -347,17 +339,41 @@ compileExp expr = do
 			return t
 
 		EAnd e0 e1		-> do
+			label_id1 <- getLabel
+			label_id2 <- getLabel
+			let label_1 = "lab" ++ (show label_id1)
+			let label_2 = "lab" ++ (show label_id2)
+			
 			t <- compileExp e0
+			putInstruction $ IfEq label_1
+			putInstruction $ PushInt 1
 			compileExp e1
-			decrStack
 			putInstruction $ And
+			putInstruction $ Goto label_2
+			putInstruction $ Label label_1
+			putInstruction $ PushInt 0
+			putInstruction $ Label label_2
+			
+			decrStack
 			return t
 			
 		EOr e0 e1		-> do
+			label_id1 <- getLabel
+			label_id2 <- getLabel
+			let label_1 = "lab" ++ (show label_id1)
+			let label_2 = "lab" ++ (show label_id2)
+			
 			t <- compileExp e0
+			putInstruction $ IfNe label_1
+			putInstruction $ PushInt 0
 			compileExp e1
-			decrStack
 			putInstruction $ Or
+			putInstruction $ Goto label_2
+			putInstruction $ Label label_1
+			putInstruction $ PushInt 1
+			putInstruction $ Label label_2
+			
+			decrStack
 			return t
 
 -- compile variable declarations
@@ -463,8 +479,6 @@ compileStm (SType typ stm) = do
 		SExp exprs		-> do
 			compileExp exprs
 			return ()
-
---compileStm lol = fail $ show lol
 
 
 -- iterate all the statements in a function definition and compile them
@@ -581,7 +595,6 @@ transJasmine instr = do
 			otherwise -> fail $ "Unable to negate type " ++ (show typ)
 		Pop -> "  pop"
 		Nop -> ""
-		--otherwise -> "undefined"
 
 -- translate a block of jasmine instructions and save result in state monad
 transJasmineBlock :: [JasminInstr] -> CP ()
@@ -590,6 +603,7 @@ transJasmineBlock context = do
 	compiled_code <- gets compiledCode
 	modify (\e -> e { compiledCode = compiled_code ++ str_src })
 
+-- compile a program tree to jasmin code
 compileTree :: Program -> CPM Err [String]
 compileTree (Program defs) = do
 	

@@ -26,8 +26,6 @@ check n s = case pProgram (myLexer s) of
                                         putStrLn err
                                         exitFailure 
                           Ok tree' -> do
-																					--putStrLn "Typecheck: OK!"
-																					--fail $ (show tree')
 																					let class_name = takeBaseName n
 																					case compile class_name tree' of
 																						Bad err -> do
@@ -55,7 +53,6 @@ main = do args <- getArgs
           case args of
             [file] -> do
 		readFile file >>= check file
-		--putStrLn (getfilename file)
             _      -> do putStrLn "Usage: main <SourceFile>"
                          exitFailure
 
