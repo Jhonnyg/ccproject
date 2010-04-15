@@ -396,9 +396,9 @@ compileDecl t (NoInit ident) = do
 			decrStack
 	
 compileDecl t (Init ident expr) = do
+	compileExp expr
 	addVar t ident
 	(local,_) <- getVar ident
-	compileExp expr
 	putInstruction $ (Store t local)
 
 
