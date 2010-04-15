@@ -434,9 +434,13 @@ compileStm (SType typ stm) = do
 			-- compare expression
 			compileExp expr
 			
-			putInstruction $ IfEq new_label
-			compileStm stmt
-			putInstruction $ Label new_label
+			case expr of
+				ELitTrue -> compileStm stmt
+				otherwise -> do
+					putInstruction $ IfEq new_label
+					compileStm stmt
+					putInstruction $ Label new_label
+			
 		   
 		CondElse  expr ifs els  -> do
 			label_else_id <- getLabel

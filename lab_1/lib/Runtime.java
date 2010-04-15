@@ -3,9 +3,9 @@ import java.util.Scanner;
 
 public class Runtime {
 	
-	public static void main(String[] args) {
+	/*public static void main(String[] args) {
 		System.out.println("Runtime library for Javalette language.");
-	}
+	}*/
 
 	// Print functions
 	public static void printInt(int i) {
@@ -24,46 +24,11 @@ public class Runtime {
 	public static int readInt() {
 		Scanner s = new Scanner(System.in);
 		return s.nextInt();
-		/*
-		String line = null;
-		
-		try {
-			BufferedReader is = new BufferedReader(new InputStreamReader(System.in));
-			line = is.readLine();
-			return Integer.parseInt(line);
-			
-		} catch (NumberFormatException ex) {
-			System.err.println("Not a valid number: " + line);
-			
-		} catch (IOException e) {
-			System.err.println("Unexpected IO ERROR: " + e);
-			
-		}
-		
-		return -1;
-		*/
 	}
 	
 	public static double readDouble() {
 		Scanner s = new Scanner(System.in);
 		return s.nextDouble();
-		/*String line = null;
-		
-		try {
-			BufferedReader is = new BufferedReader(new InputStreamReader(System.in));
-			line = is.readLine();
-			return Double.parseDouble(line);
-			
-		} catch (NumberFormatException ex) {
-			System.err.println("Not a valid number: " + line);
-			
-		} catch (IOException e) {
-			System.err.println("Unexpected IO ERROR: " + e);
-			
-		}
-		
-		return -1.0;
-		*/
 	}
 	
 	
