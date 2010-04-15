@@ -514,10 +514,15 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	-- compile each code statement
 	mapM_ (compileStm) stms
 	
+	code_stack' <- gets codeStack
+	when ((length code_stack') == 1) $ putInstruction $ Return Void
+	
 	code_stack <- gets codeStack
 	prog_code <- gets programCode
 	max_stack_depth <- gets maxStackDepth
 	num_locals <- gets nextVarIndex
+	--fail $ (show code_stack)
+	
 	let code_stack' = ((StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType max_stack_depth num_locals) : code_stack) ++ [EndMethod]
 	modify (\e -> e { programCode = prog_code ++ [code_stack'] })
 
