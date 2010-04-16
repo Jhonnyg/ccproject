@@ -24,6 +24,8 @@ newtype CPM m a = CPM { unCPM :: StateT Env m a }
 -- Type alias to increase readability
 type CP a = CPM Err a
 
+-- "Abstract" Jasmin Instructions
+--   will be translated into strings later on
 data JasminInstr = 
 	Return Type
 	| StartMethod String [Type] Type Integer Integer
@@ -55,11 +57,9 @@ data JasminInstr =
 	| Nop
 	deriving (Show)
 
-
 data MethodSignature = Internal ([Type], Type) | External ([Type], Type)
 
---data JasminProgram = [JasminInstr]
--- Replace [(from,to)]
+-- Compiler environment
 data Env = Env {
 		 classname :: String,
 		 signatures :: Map Ident MethodSignature,
@@ -72,6 +72,7 @@ data Env = Env {
 		 programCode :: [[JasminInstr]],
 		 compiledCode :: [String] }
 
+-- Get next available label index
 getLabel :: CP Integer
 getLabel = do
 	next_label <- gets nextLabelIndex
@@ -136,6 +137,9 @@ clearContexSpec = do
 	                  maxStackDepth = 0,
 	                  codeStack = []})
 
+-- standard functions that are implemented in the Runtime class
+-- all are marked "external" which when translated means
+-- they are in the Runtime class
 stdFuncs = [(Ident "printInt", External ([Int],Void)),
 	    (Ident "readInt", External ([],Int)),
 	    (Ident "printDouble", External ([Doub],Void)),
@@ -145,7 +149,7 @@ stdFuncs = [(Ident "printInt", External ([Int],Void)),
 emptyEnv :: String -> Env
 emptyEnv name = Env {
                  classname = name,
-                 signatures = Map.fromList stdFuncs, -- add our standard functions here from start?
+                 signatures = Map.fromList stdFuncs,
                  variables = [Map.empty],
 								 nextVarIndex = 0,
 								 nextLabelIndex = 0,
@@ -394,7 +398,8 @@ compileDecl t (NoInit ident) = do
 			incrStack
 			putInstruction $ (Store t local)
 			decrStack
-	
+
+-- variable declaration with initialization expression
 compileDecl t (Init ident expr) = do
 	compileExp expr
 	addVar t ident
@@ -521,7 +526,6 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	prog_code <- gets programCode
 	max_stack_depth <- gets maxStackDepth
 	num_locals <- gets nextVarIndex
-	--fail $ (show code_stack)
 	
 	let code_stack' = ((StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType max_stack_depth num_locals) : code_stack) ++ [EndMethod]
 	modify (\e -> e { programCode = prog_code ++ [code_stack'] })
