@@ -44,12 +44,10 @@ check n s = case pProgram (myLexer s) of
 																														let jasmine_code = concat $ intersperse "\n" prg
 																														
 																														-- write jasmin code
-																														let output_file = ((takeDirectory n) ++ "/" ++ class_name ++ ".j")
-																														writeFile output_file jasmine_code
+																														writeFile (genJOutputDir n) jasmine_code
 																														
 																														-- run jasmin on output file
-																														let jasmin_flags = " -d " ++ ((takeDirectory n) ++ "/ ")
-																														system $ "java -jar lib/jasmin.jar" ++ jasmin_flags ++ output_file
+																														system $ "java -jar lib/jasmin.jar" ++ (genJOutputFlag n) ++ (genJOutputDir n)
 																														
 																														-- ALRIGHT!
 																														hPutStr stderr "OK"
@@ -60,6 +58,15 @@ main = do args <- getArgs
           case args of
             [file] -> do
 		readFile file >>= check file
-            _      -> do putStrLn "Usage: main <SourceFile>"
+            _      -> do putStrLn "Usage: jlc <SourceFile.jl>"
                          exitFailure
 
+genJOutputDir :: String -> String
+genJOutputDir n = case (takeDirectory n) of
+	"" -> (takeBaseName n) ++ ".j"
+	otherwise -> ((takeDirectory n) ++ "/" ++ (takeBaseName n) ++ ".j")
+
+genJOutputFlag :: String -> String
+genJOutputFlag n = case (takeDirectory n) of
+	"" -> " "
+	otherwise -> " -d " ++ ((takeDirectory n) ++ "/ ")
