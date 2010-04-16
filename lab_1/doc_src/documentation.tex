@@ -76,8 +76,17 @@
 \section{Introduction}
 
 \section{The JLC Compiler}
+  \subsection*{Building}
+    To build the JLC binary execute;\\
+    \texttt{\$ cd src/}\\
+    \texttt{\$ make}\\
+    It will produce a \texttt{jlc} binary in the project root directory.\\
+    \\
+    The following command will remove all files produced during building;\\
+    \texttt{\$ make clean}
+
   \subsection*{Usage}
-    \$ \texttt{jlc \textit{filename.jl}}\\
+    \texttt{\$ jlc \textit{filename.jl}}\\
     Will generate \texttt{filename.j} (Jasmin file) and \texttt{filename.class} (Java Class file).
   
   \subsection*{How it works}
