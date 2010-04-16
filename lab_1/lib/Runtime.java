@@ -3,11 +3,11 @@ import java.util.Scanner;
 
 public class Runtime {
 	
-	/*public static void main(String[] args) {
+	public static void main(String[] args) {
 		System.out.println("Runtime library for Javalette language.");
-	}*/
+	}
 	
-	static Scanner s = new Scanner(System.in);
+	static Scanner s = new Scanner(System.in); // This works instead of placing it inside the read*-function, don't know why! :S
 
 	// Print functions
 	public static void printInt(int i) {

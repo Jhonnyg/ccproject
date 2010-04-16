@@ -406,7 +406,7 @@ compileDecl t (Init ident expr) = do
 compileStm :: Stmt -> CP ()
 compileStm (SType typ stm) = do
 	case stm of
-		Empty 			-> fail $ "Trying to compile empty statement."--undefined
+		Empty 			-> fail $ "Trying to compile empty statement."
 		BStmt (Block stmts) 	-> do
 			old_vars <- gets variables
 			modify (\e -> e { variables = Map.empty : old_vars } )
