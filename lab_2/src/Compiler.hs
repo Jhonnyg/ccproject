@@ -24,52 +24,25 @@ newtype CPM m a = CPM { unCPM :: StateT Env m a }
 -- Type alias to increase readability
 type CP a = CPM Err a
 
--- "Abstract" Jasmin Instructions
+-- "Abstract" LLVM Instructions
 --   will be translated into strings later on
-data JasminInstr = 
-	Return Type
-	| StartMethod String [Type] Type Integer Integer
-	| Goto String
-	| Label String
-	| EndMethod
-	| PushInt Integer
-	| PushDoub Double
-	| Store Type Integer
-	| Load Type Integer
-	| Increase Integer Integer
-	| FunctionCall String [Type] Type
-	| FunctionCallExternal String [Type] Type
-	| FunctionCallPrintString String
-	| Add Type
-	| Sub Type
-	| Mul Type
-	| Modu Type
-	| Divide Type
-	| And
-	| Or
-	| IfEq String
-	| IfCmp RelOp String
-	| IfNe String
-	| DoubCmpG
-	| DoubCmpL
-	| Negation Type
-	| Pop
-	| Nop
+data LLVMInstruction = 
+	Nop
 	deriving (Show)
-
-data MethodSignature = Internal ([Type], Type) | External ([Type], Type)
+	
+data MethodDefinition = Internal ([Type], Type) MethodAttrib MethodCC | Private ([Type], Type) MethodAttrib MethodCC
+data MethodAttrib = ReadNone | ReadOnly | NoUnwind
+data MethodCC = CCC | FastCC -- Calling convention
 
 -- Compiler environment
 data Env = Env {
 		 classname :: String,
-		 signatures :: Map Ident MethodSignature,
+		 signatures :: Map Ident MethodDefinition,
 		 variables :: [Map Ident (Integer, Type)],
 		 nextVarIndex :: Integer,
 		 nextLabelIndex :: Integer,
-		 currentStackDepth :: Integer,
-		 maxStackDepth :: Integer,
-		 codeStack :: [JasminInstr],
-		 programCode :: [[JasminInstr]],
+		 codeStack :: [LLVMInstruction],
+		 programCode :: [[LLVMInstruction]],
 		 compiledCode :: [String] }
 
 -- Get next available label index
@@ -103,39 +76,21 @@ getVar n = do
 	  rtrn (x:xs) = return x
 
 -- push a jasmine instruction on the code stack
-putInstruction :: JasminInstr -> CP ()
-putInstruction instr = do
+putInstruction :: LLVMInstruction -> CP ()
+putInstruction instr = undefined {-do
 	code_stack <- gets codeStack
 	modify (\e -> e { codeStack = code_stack ++ [instr] })
-
--- increase stack counter
-incrStack :: CP ()
-incrStack = do
-	stack_depth <- gets currentStackDepth
-	max_stack_depth <- gets maxStackDepth
-	let stack_depth' = stack_depth + 1
-	
-	when (stack_depth' > max_stack_depth) $ modify (\e -> e { maxStackDepth = stack_depth' })
-	modify (\e -> e { currentStackDepth = stack_depth'})
-	
--- increase stack counter
-decrStack :: CP ()
-decrStack = do
-	stack_depth <- gets currentStackDepth
-	max_stack_depth <- gets maxStackDepth
-	let stack_depth' = stack_depth - 1
-	
-	modify (\e -> e { currentStackDepth = stack_depth'})
-
+-}
 -- clear context (i.e. enter a new method)
 clearContexSpec :: CP ()
-clearContexSpec = do
+clearContexSpec = undefined {-do
 	modify (\e -> e { variables = [Map.empty],
 										nextVarIndex = 0,
 										nextLabelIndex = 0,
 	                  currentStackDepth = 0,
 	                  maxStackDepth = 0,
 	                  codeStack = []})
+	-}
 
 -- standard functions that are implemented in the Runtime class
 -- all are marked "external" which when translated means
@@ -149,7 +104,7 @@ stdFuncs = [(Ident "printInt", External ([Int],Void)),
 emptyEnv :: String -> Env
 emptyEnv name = Env {
                  classname = name,
-                 signatures = Map.fromList stdFuncs,
+                 signatures = Map.empty --Map.fromList stdFuncs,
                  variables = [Map.empty],
 								 nextVarIndex = 0,
 								 nextLabelIndex = 0,
@@ -179,7 +134,7 @@ compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 
 -- compile expressions
 compileExp :: Expr -> CP Type
-compileExp expr = do
+compileExp expr = undefined {-do
 	case expr of
 		EVar name 		-> do
 			incrStack
@@ -379,10 +334,11 @@ compileExp expr = do
 			
 			decrStack
 			return t
+-}
 
 -- compile variable declarations
 compileDecl :: Type -> Item -> CP ()
-compileDecl t (NoInit ident) = do
+compileDecl t (NoInit ident) = undefined {- do
 	addVar t ident
 	(local,_) <- getVar ident
 	case t of 
@@ -405,11 +361,12 @@ compileDecl t (Init ident expr) = do
 	addVar t ident
 	(local,_) <- getVar ident
 	putInstruction $ (Store t local)
+-}
 
 
 -- compile statements
 compileStm :: Stmt -> CP ()
-compileStm (SType typ stm) = do
+compileStm (SType typ stm) = undefined {- do
 	case stm of
 		Empty 			-> fail $ "Trying to compile empty statement."
 		BStmt (Block stmts) 	-> do
@@ -504,11 +461,11 @@ compileStm (SType typ stm) = do
 		SExp exprs		-> do
 			compileExp exprs
 			return ()
-
+-}
 
 -- iterate all the statements in a function definition and compile them
 compileDef :: TopDef -> CP ()
-compileDef (FnDef retType (Ident name) args (Block stms)) = do
+compileDef (FnDef retType (Ident name) args (Block stms)) = undefined {-do
 	clearContexSpec
 	
 	putInstruction (Label "entry")
@@ -532,6 +489,7 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 
 	where
 		addArgs (Arg t i) = addVar t i
+-}
 
 -- add a function definition
 addDef :: TopDef -> CP ()
@@ -545,108 +503,29 @@ addDef (FnDef retType n as _) = do
 		argToType (Arg t _) = t
 	
 -- Look for a function in the signatures
-lookFun :: Ident -> CP MethodSignature--([Type], Type)
+lookFun :: Ident -> CP MethodSignature
 lookFun fName = do
 	mbtSig <- gets (Map.lookup fName. signatures)
 	when (isNothing mbtSig) (fail $ "Unknown function name")
 	return $ fromJust mbtSig
 
--- translate types to jasmine type identifiers
-transJasmineType :: Type -> String
-transJasmineType Int = "I"
-transJasmineType Doub = "D"
-transJasmineType Bool = "I"
-transJasmineType Void = "V"
 
--- translate a specific jasmine instruction to string
-transJasmine :: JasminInstr -> String
-transJasmine instr = do
-	case instr of 
-		Return Int -> "  ireturn"
-		Return Doub -> "  dreturn"
-		Return Void -> "  return"
-		StartMethod name args rettype stack locals -> "\n.method public static " ++ name ++ "(" ++ ( (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType rettype) ++ 
-																									"\n  .limit locals " ++ (show locals) ++
-																									"\n  .limit stack " ++ (show stack)
-		EndMethod -> ".end method"
-		PushInt i -> "  ldc " ++ (show i)
-		PushDoub d -> "  ldc2_w " ++ (show d)
-		FunctionCall n args ret -> "  invokestatic " ++ (map (\e -> if (e == '.') then '/' else e) n) ++ "(" ++ ( (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
-		FunctionCallExternal n args ret -> "  invokestatic Runtime/" ++ n ++ "(" ++ (intersperse ',' (concat (map transJasmineType args)) ) ++ ")" ++ (transJasmineType ret)
-		FunctionCallPrintString str -> "  ldc " ++ (show str) ++
-																	"\n  invokestatic Runtime/printString(Ljava/lang/String;)V"
-		Label lbl -> " " ++ lbl ++ ":"
-		Store typ i -> case typ of
-			Int -> "  istore " ++ (show i)
-			Doub -> "  dstore " ++ (show i)
-			Bool -> "  istore " ++ (show i)
-			otherwise -> fail $ "Store instruction failed, unsupported type!"
-		Load typ i -> case typ of
-			Int -> "  iload " ++ (show i)
-			Doub -> "  dload " ++ (show i)
-			Bool -> "  iload " ++ (show i)
-		Increase local i -> "  iinc " ++ (show local) ++ " " ++ (show i)
-		Add typ -> case typ of 
-			Int -> "  iadd"
-			Doub -> "  dadd"
-			otherwise -> fail $ "No add operator for " ++ (show typ)
-		Sub typ -> case typ of 
-			Int -> "  isub"
-			Doub -> "  dsub"
-			otherwise -> fail $ "No subtract operator for " ++ (show typ)
-		Mul typ -> case typ of
-			Int -> "  imul"
-			Doub -> "  dmul"
-			otherwise -> fail $ "No multiplication operator for " ++ (show typ)
-		Modu typ -> case typ of 
-			Int -> "  irem"
-			Doub -> "  drem"
-		Divide typ -> case typ of
-			Doub -> "  ddiv"
-			otherwise -> "  idiv"
-		And -> "  iand"
-		Or  -> "  ior"
-		Goto lbl -> "  goto " ++ lbl
-		IfEq lbl -> "  ifeq " ++ lbl
-		IfNe lbl -> "  ifne " ++ lbl
-		IfCmp op lbl -> case op of 
-			EQU -> "  if_icmpeq " ++ lbl
-			GTH -> "  if_icmpgt " ++ lbl
-			LTH -> "  if_icmplt " ++ lbl
-			NE -> "  if_icmpne " ++ lbl
-			GE -> "  if_icmpge " ++ lbl
-			LE -> "  if_icmple " ++ lbl
-		DoubCmpG -> "  dcmpg"
-		DoubCmpL -> "  dcmpl"
-		Negation typ -> case typ of
-			Int -> "  ineg"
-			Doub -> "  dneg"
-			otherwise -> fail $ "Unable to negate type " ++ (show typ)
-		Pop -> "  pop"
-		Nop -> ""
-
--- translate a block of jasmine instructions and save result in state monad
-transJasmineBlock :: [JasminInstr] -> CP ()
-transJasmineBlock context = do
-	let str_src = map transJasmine context
-	compiled_code <- gets compiledCode
-	modify (\e -> e { compiledCode = compiled_code ++ str_src })
-
--- compile a program tree to jasmin code
+-- compile a program tree to LLVM asm code
 compileTree :: Program -> CPM Err [String]
 compileTree (Program defs) = do
 	
 	-- store defs
-	mapM addDef defs
+	--mapM addDef defs
 	
 	-- compile all function defines
-	mapM compileDef defs
+	--mapM compileDef defs
 	
 	-- translate jasmine code to strings
-	pgm_code <- gets programCode
+	--pgm_code <- gets programCode
 	--fail $ show pgm_code
-	mapM_ (transJasmineBlock) pgm_code
+	--mapM_ (transLLVMBlock) pgm_code
 	
 	-- compiledCode now has translated jasmine values
 	compiled_code <- gets compiledCode
 	return $ compiled_code
+
