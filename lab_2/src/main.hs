@@ -13,7 +13,7 @@ import Printjavalette
 
 import TypeChecker 
 
-import Compiler
+import CompilerLLVM
 
 import List (intersperse)
 
@@ -39,15 +39,15 @@ check n s = case pProgram (myLexer s) of
 																													putStrLn err
 																													exitFailure
 																						Ok prg    -> do
-																														--putStrLn "Compile: OK"
-																														--mapM_ (putStrLn) prg
-																														let jasmine_code = concat $ intersperse "\n" prg
+																														putStrLn "Compile: OK"
+																														mapM_ (putStrLn) prg
+																														--let jasmine_code = concat $ intersperse "\n" prg
 																														
 																														-- write jasmin code
-																														writeFile (genJOutputDir n) jasmine_code
+																														--writeFile (genJOutputDir n) jasmine_code
 																														
 																														-- run jasmin on output file
-																														system $ "java -jar lib/jasmin.jar" ++ (genJOutputFlag n) ++ (genJOutputDir n)
+																														--system $ "java -jar lib/jasmin.jar" ++ (genJOutputFlag n) ++ (genJOutputDir n)
 																														
 																														-- ALRIGHT!
 																														hPutStr stderr "OK"

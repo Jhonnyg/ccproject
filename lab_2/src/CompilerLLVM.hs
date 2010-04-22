@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Compiler where
+module CompilerLLVM where
 
 import Absjavalette
 import Printjavalette
@@ -30,9 +30,24 @@ data LLVMInstruction =
 	Nop
 	deriving (Show)
 	
-data MethodDefinition = Internal ([Type], Type) MethodAttrib MethodCC | Private ([Type], Type) MethodAttrib MethodCC
-data MethodAttrib = ReadNone | ReadOnly | NoUnwind
-data MethodCC = CCC | FastCC -- Calling convention
+type MethodDefinition = (MethodLinkType, ([Type], Type))
+data MethodLinkType = Internal MethodAttrib
+                    | Private MethodAttrib
+                    | External MethodAttrib
+data MethodAttrib = ReadNone MethodCC
+                  | ReadOnly MethodCC
+                  | NoUnwind MethodCC
+                  | NoAttrib MethodCC
+data MethodCC = CCC
+              | FastCC -- Calling convention
+
+-- standard functions that are implemented in the Runtime class
+-- all are marked "external" which when translated means
+-- they are in the Runtime class
+stdFuncs = [(Ident "printInt", (External (NoAttrib CCC), ([Int],Void)) ),
+	    (Ident "readInt", (External (NoAttrib CCC), ([],Int)) ),
+	    (Ident "printDouble", (External (NoAttrib CCC), ([Doub],Void)) ),
+	    (Ident "readDouble", (External (NoAttrib CCC), ([],Doub)) )]
 
 -- Compiler environment
 data Env = Env {
@@ -92,24 +107,14 @@ clearContexSpec = undefined {-do
 	                  codeStack = []})
 	-}
 
--- standard functions that are implemented in the Runtime class
--- all are marked "external" which when translated means
--- they are in the Runtime class
-stdFuncs = [(Ident "printInt", External ([Int],Void)),
-	    (Ident "readInt", External ([],Int)),
-	    (Ident "printDouble", External ([Doub],Void)),
-	    (Ident "readDouble", External ([],Doub))]	
-
 -- Create an empty environment
 emptyEnv :: String -> Env
 emptyEnv name = Env {
                  classname = name,
-                 signatures = Map.empty --Map.fromList stdFuncs,
+                 signatures = Map.empty, --Map.fromList stdFuncs,
                  variables = [Map.empty],
 								 nextVarIndex = 0,
 								 nextLabelIndex = 0,
-								 currentStackDepth = 0,
-								 maxStackDepth = 0,
 								 codeStack = [],
 								 programCode = [],
 								 compiledCode = [".source " ++ name ++ ".j",
@@ -496,14 +501,14 @@ addDef :: TopDef -> CP ()
 addDef (FnDef retType n as _) = do
 	sigs <- gets signatures 
 	let ts = map argToType as
-	let sigs' = Map.insert n (Internal (ts,retType)) sigs
+	let sigs' = Map.insert n (External (NoAttrib CCC), (ts,retType)) sigs
 	modify (\e -> e { signatures = sigs' } ) -- updates the state record signatures
 	where 
 		argToType :: Arg -> Type
 		argToType (Arg t _) = t
 	
 -- Look for a function in the signatures
-lookFun :: Ident -> CP MethodSignature
+lookFun :: Ident -> CP MethodDefinition
 lookFun fName = do
 	mbtSig <- gets (Map.lookup fName. signatures)
 	when (isNothing mbtSig) (fail $ "Unknown function name")
