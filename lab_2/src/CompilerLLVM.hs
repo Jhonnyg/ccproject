@@ -26,10 +26,22 @@ type CP a = CPM Err a
 
 -- "Abstract" LLVM Instructions
 --   will be translated into strings later on
-data LLVMInstruction = 
+data LLVMInstruction =
 	Nop
-        | Return Type 
+	| Return Type String -- Return type register
+	| ReturnLit Type String -- Return type literal
+	| FunctionBegin String Type -- FunctiosBegin name returntype
+	| FunctionEnd
+	| Alloc Type String -- Alloc type register
+	| StoreLit Type String String -- Store type literalvalue register
+	| Store Type String String -- Store type fromreg toreg
 	deriving (Show)
+
+{-data Value =
+  Integer
+  | Boolean
+  | Double
+  deriving (Show)-}
 	
 type MethodDefinition = (MethodLinkType, ([Type], Type))
 data MethodLinkType = Internal MethodAttrib
@@ -54,7 +66,8 @@ stdFuncs = [(Ident "printInt", (External (NoAttrib CCC), ([Int],Void)) ),
 data Env = Env {
 		 classname :: String,
 		 signatures :: Map Ident MethodDefinition,
-		 variables :: [Map Ident (Integer, Type)],
+		 variables :: [Map Ident (String, Type)],
+		 registers :: Map Ident Int,
 		 nextVarIndex :: Integer,
 		 nextLabelIndex :: Integer,
 		 codeStack :: [LLVMInstruction],
@@ -68,45 +81,50 @@ getLabel = do
 	modify (\e -> e { nextLabelIndex = next_label + 1} )
 	return next_label
 
+-- new register
+newRegister :: Ident -> CP String
+newRegister ident@(Ident n) = do
+  regs <- gets registers
+  case Map.lookup ident regs of
+    Just i -> do
+      modify (\e -> e { registers = Map.adjust (+ 1) ident regs } )
+      return $ n ++ (show (i + 1))
+    Nothing -> do
+      modify (\e -> e { registers = Map.insert ident 0 regs} )
+      return $ n ++ "0"
+
 -- add variable to current context (i.e. give it a local var number)
-addVar :: Type -> Ident -> CP ()
+addVar :: Type -> Ident -> CP String
 addVar t n = do
 	v:vs <- gets variables
-	next_index <- gets nextVarIndex
-	case t of
-		Doub -> modify (\e -> e { nextVarIndex = next_index + 2 })
-		otherwise -> modify (\e -> e { nextVarIndex = next_index + 1 })
 	when (Map.member n v) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top context"
-	let v' = Map.insert n (next_index, t) v
+	new_reg_name <- newRegister n
+	let v' = Map.insert n (new_reg_name, t) v
 	modify (\e -> e { variables = v':vs } )
+	return new_reg_name
 
 -- get local var number and type from variable name
-getVar :: Ident -> CP (Integer, Type)
+getVar :: Ident -> CP (String, Type)
 getVar n = do
 	vars <- gets variables
 	rtrn (catMaybes ((map (Map.lookup n) vars)))
   where
 	-- if we cant find anything, make sure we fail
-	  rtrn :: [(Integer, Type)] -> CP (Integer, Type)
+	  rtrn :: [(String, Type)] -> CP (String, Type)
 	  rtrn [] = fail $ (show n) ++ " referenced, but not found!"
 	  rtrn (x:xs) = return x
 
 -- push a jasmine instruction on the code stack
 putInstruction :: LLVMInstruction -> CP ()
-putInstruction instr = undefined {-do
+putInstruction instr = do
 	code_stack <- gets codeStack
 	modify (\e -> e { codeStack = code_stack ++ [instr] })
--}
+	
 -- clear context (i.e. enter a new method)
 clearContexSpec :: CP ()
-clearContexSpec = undefined {-do
+clearContexSpec = do
 	modify (\e -> e { variables = [Map.empty],
-										nextVarIndex = 0,
-										nextLabelIndex = 0,
-	                  currentStackDepth = 0,
-	                  maxStackDepth = 0,
 	                  codeStack = []})
-	-}
 
 -- Create an empty environment
 emptyEnv :: String -> Env
@@ -114,13 +132,14 @@ emptyEnv name = Env {
                  classname = name,
                  signatures = Map.fromList stdFuncs,
                  variables = [Map.empty],
+                 registers = Map.empty,
 								 nextVarIndex = 0,
 								 nextLabelIndex = 0,
 								 codeStack = [],
 								 programCode = [],
 								 compiledCode = [
                                                                  "declare void @printInt(i32 %x)",
-                                                                 "declare void @printDouble(doule %x)",
+                                                                 "declare void @printDouble(double %x)",
                                                                  "declare void @printString(i8* %x)",
                                                                  "declare i32 @readInt()",
                                                                  "declare double @readDouble()"
@@ -131,7 +150,7 @@ compile :: String -> Program -> Err [String]
 compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 
 -- compile expressions
-compileExp :: Expr -> CP Type
+compileExp :: Expr -> CP (String, Type)
 compileExp expr = undefined
 	{-do
 	case expr of
@@ -337,10 +356,10 @@ compileExp expr = undefined
 
 -- compile variable declarations
 compileDecl :: Type -> Item -> CP ()
-compileDecl t (NoInit ident) = undefined {- do
-	addVar t ident
-	(local,_) <- getVar ident
-	case t of 
+compileDecl t (NoInit ident) = do
+	reg_name <- addVar t ident
+	putInstruction $ Alloc t reg_name
+	{-case t of 
 		Doub 	  -> do
 			putInstruction $ PushDoub 0.0
 			incrStack
@@ -352,23 +371,48 @@ compileDecl t (NoInit ident) = undefined {- do
 			putInstruction $ PushInt 0
 			incrStack
 			putInstruction $ (Store t local)
-			decrStack
+			decrStack-}
 
 -- variable declaration with initialization expression
 compileDecl t (Init ident expr) = do
-	compileExp expr
-	addVar t ident
-	(local,_) <- getVar ident
-	putInstruction $ (Store t local)
--}
+  reg_name <- addVar t ident
+  putInstruction $ Alloc t reg_name
+  case expr of
+    ELitInt i  -> putInstruction $ (StoreLit t (show i) reg_name)
+    ELitDoub i -> putInstruction $ (StoreLit t (show i) reg_name)
+    ELitTrue -> putInstruction $ (StoreLit t "1" reg_name)
+    ELitFalse -> putInstruction $ (StoreLit t "0" reg_name)
+    otherwise -> do
+      (reg_from, t') <- compileExp expr
+      putInstruction $ (Store t reg_from reg_name)
+	
+	
 
 
 -- compile statements
 compileStm :: Stmt -> CP ()
-compileStm (SType typ stm) = undefined {-do
+compileStm (SType typ stm) = do
     case stm of
-        Ret (ELitInt i) -> putInstruction $ (Return Int i)
-        -}
+      Empty 			     -> fail $ "Trying to compile empty statement."
+      
+      -- Block statement (add a new clean context)
+      BStmt (Block stmts) 	-> do
+        old_vars <- gets variables
+        modify (\e -> e { variables = Map.empty : old_vars } )
+        mapM_ compileStm stmts
+        v:vs <- gets variables
+        modify (\e -> e { variables = vs } )
+  		
+  		-- Return statements!	
+      Ret (ELitInt i)  -> putInstruction $ (Return Int (show i))
+      Ret (ELitTrue)   -> putInstruction $ (Return Bool "1")
+      Ret (ELitFalse)  -> putInstruction $ (Return Bool "0")
+      Ret (ELitDoub i) -> putInstruction $ (Return Doub (show i))
+      
+      Decl t itmList		-> mapM_ (compileDecl t) itmList
+      
+      unknown -> fail $ "Trying to compile an unknown statement!"
+        
 
     {- do
 	case stm of
@@ -470,8 +514,17 @@ compileStm (SType typ stm) = undefined {-do
 -- iterate all the statements in a function definition and compile them
 compileDef :: TopDef -> CP ()
 compileDef (FnDef retType (Ident name) args (Block stms)) = do
-        mapM_ (compileStm) stms
-        return()
+  
+  modify (\e -> e { registers = Map.empty }) -- Clear register context
+  clearContexSpec -- Clear current "block" context
+  
+  putInstruction $ FunctionBegin name retType
+  mapM_ (compileStm) stms
+  putInstruction $ FunctionEnd
+  
+  code_stack <- gets codeStack
+  prog_code <- gets programCode
+  modify (\e -> e { programCode = prog_code ++ [code_stack] })
 {-do
 	clearContexSpec
 	
@@ -516,6 +569,29 @@ lookFun fName = do
 	when (isNothing mbtSig) (fail $ "Unknown function name")
 	return $ fromJust mbtSig
 
+typeToLLVMType :: Type -> String
+typeToLLVMType Int = "i32"
+typeToLLVMType Doub = "double"
+typeToLLVMType Bool = "i2"
+
+transLLVMInstr :: LLVMInstruction -> String
+transLLVMInstr instr = do
+  case instr of
+    FunctionBegin name rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "() {\nentry:" -- TODO: fix parameter list!
+    FunctionEnd -> "}"
+    Return t reg    -> "  ret " ++ typeToLLVMType(t) ++ " " ++ reg
+    ReturnLit t lit -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
+    Alloc t reg     -> "  %" ++ reg ++ " = alloca " ++ typeToLLVMType(t)
+    StoreLit t v reg  -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg
+    Store t reg1 reg2 -> "  store " ++ typeToLLVMType(t) ++ "* %" ++ reg1 ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg2
+    otherwise -> fail $ "Trying to translate unknown instruction!"
+
+-- translate instructions into strings
+transLLVMBlock :: [LLVMInstruction] -> CP ()
+transLLVMBlock context = do
+  let str_src = map transLLVMInstr context
+  compiled_code <- gets compiledCode
+  modify (\e -> e { compiledCode = compiled_code ++ str_src })
 
 -- compile a program tree to LLVM asm code
 compileTree :: Program -> CPM Err [String]
@@ -528,9 +604,9 @@ compileTree (Program defs) = do
 	mapM compileDef defs
 	
 	-- translate jasmine code to strings
-	--pgm_code <- gets programCode
+	pgm_code <- gets programCode
 	--fail $ show pgm_code
-	--mapM_ (transLLVMBlock) pgm_code
+	mapM_ (transLLVMBlock) pgm_code
 	
 	-- compiledCode now has translated jasmine values
 	compiled_code <- gets compiledCode
