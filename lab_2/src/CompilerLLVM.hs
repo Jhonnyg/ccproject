@@ -28,6 +28,7 @@ type CP a = CPM Err a
 --   will be translated into strings later on
 data LLVMInstruction = 
 	Nop
+        | Return Type 
 	deriving (Show)
 	
 type MethodDefinition = (MethodLinkType, ([Type], Type))
@@ -117,21 +118,13 @@ emptyEnv name = Env {
 								 nextLabelIndex = 0,
 								 codeStack = [],
 								 programCode = [],
-								 compiledCode = [".source " ++ name ++ ".j",
-								                ".class  public " ++ name,
-								                ".super  java/lang/Object",
-																"; standard initializer",
-																".method public <init>()V",
-																"   aload_0",
-																"   invokenonvirtual java/lang/Object/<init>()V",
-																"   return",
-																".end method",
-																".method public static main([Ljava/lang/String;)V",
-																"   .limit locals 1",
-																"   invokestatic " ++ name ++ "/main()I",
-																"   pop",
-																"   return",
-																".end method"] }
+								 compiledCode = [
+                                                                 "declare void @printInt(i32 %x)",
+                                                                 "declare void @printDouble(doule %x)",
+                                                                 "declare void @printString(i8* %x)",
+                                                                 "declare i32 @readInt()",
+                                                                 "declare double @readDouble()"
+                                                                 ] }
 
 -- main entry point for compiler
 compile :: String -> Program -> Err [String]
@@ -372,7 +365,12 @@ compileDecl t (Init ident expr) = do
 
 -- compile statements
 compileStm :: Stmt -> CP ()
-compileStm (SType typ stm) = undefined {- do
+compileStm (SType typ stm) = undefined {-do
+    case stm of
+        Ret (ELitInt i) -> putInstruction $ (Return Int i)
+        -}
+
+    {- do
 	case stm of
 		Empty 			-> fail $ "Trying to compile empty statement."
 		BStmt (Block stmts) 	-> do
@@ -471,7 +469,10 @@ compileStm (SType typ stm) = undefined {- do
 
 -- iterate all the statements in a function definition and compile them
 compileDef :: TopDef -> CP ()
-compileDef (FnDef retType (Ident name) args (Block stms)) = undefined {-do
+compileDef (FnDef retType (Ident name) args (Block stms)) = do
+        mapM_ (compileStm) stms
+        return()
+{-do
 	clearContexSpec
 	
 	putInstruction (Label "entry")
@@ -524,7 +525,7 @@ compileTree (Program defs) = do
 	--mapM addDef defs
 	
 	-- compile all function defines
-	--mapM compileDef defs
+	mapM compileDef defs
 	
 	-- translate jasmine code to strings
 	--pgm_code <- gets programCode
