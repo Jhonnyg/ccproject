@@ -111,7 +111,7 @@ clearContexSpec = undefined {-do
 emptyEnv :: String -> Env
 emptyEnv name = Env {
                  classname = name,
-                 signatures = Map.empty, --Map.fromList stdFuncs,
+                 signatures = Map.fromList stdFuncs,
                  variables = [Map.empty],
 								 nextVarIndex = 0,
 								 nextLabelIndex = 0,
@@ -139,7 +139,8 @@ compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 
 -- compile expressions
 compileExp :: Expr -> CP Type
-compileExp expr = undefined {-do
+compileExp expr = undefined
+	{-do
 	case expr of
 		EVar name 		-> do
 			incrStack
@@ -501,7 +502,7 @@ addDef :: TopDef -> CP ()
 addDef (FnDef retType n as _) = do
 	sigs <- gets signatures 
 	let ts = map argToType as
-	let sigs' = Map.insert n (External (NoAttrib CCC), (ts,retType)) sigs
+	let sigs' = Map.insert n (Internal (NoAttrib CCC), (ts,retType)) sigs
 	modify (\e -> e { signatures = sigs' } ) -- updates the state record signatures
 	where 
 		argToType :: Arg -> Type
