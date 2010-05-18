@@ -408,7 +408,6 @@ compileStm (SType typ stm) = do
       VRet             -> putInstruction $ ReturnVoid
       
       Decl t itmList    -> mapM_ (compileDecl t) itmList
-      Ass name expr     -> undefined
       Decr name         -> do
                     (reg,typ) <- getVar name
                     (tmp_reg) <- newRegister (Ident "tmp")
@@ -425,8 +424,16 @@ compileStm (SType typ stm) = do
                     putInstruction $ Add typ inc_reg tmp_reg "1"
                     putInstruction $ Store typ inc_reg reg
                             
-                            --Store Type String String
-      --getVar :: Ident -> CP (String, Type)
+      Ass name expr     -> do
+                    (val,exp_typ) <- compileExp expr
+                    (reg,var_typ) <- getVar name
+                    
+                    case val of
+                        Just reg_val -> do
+                                tmp_reg <- newRegister (Ident "tmp")
+                                putInstruction $ Load var_typ tmp_reg reg_val -- load val into tmp reg
+                                putInstruction $ Store var_typ tmp_reg reg    -- store tmp val to reg
+                        Nothing      -> fail "yep!"
       unknown -> fail $ "Trying to compile an unknown statement! " ++ (show stm)
         
 --compileExp :: Expr -> CP (String, Type)
@@ -448,14 +455,8 @@ compileStm (SType typ stm) = do
 			(local, typ) <- getVar name
 			putInstruction $ Store typ local
 		     
-		Incr name		-> do
-			(local, _) <- getVar name
-			putInstruction $ Increase local 1
-		   
-		Decr name		-> 	do
-				(local, _) <- getVar name
-				putInstruction $ Increase local (-1)
-		   
+		Incr name		DONE
+		Decr name		DONE
 		Ret  expr     		-> case typ of
 			Int -> do
 				compileExp expr
