@@ -33,7 +33,7 @@ data LLVMInstruction =
 	| Return Type Register              -- Return type register
 	| ReturnLit Type String           -- Return type literal
 	| ReturnVoid                      -- Return void
-	| FunctionBegin String [Arg] Type -- FunctiosBegin name params returntype
+	| FunctionBegin String [(Register, Type)] Type -- FunctiosBegin name params returntype
 	| FunctionEnd
 	| Alloc Type Register -- Alloc type register
 	| StoreLit Type String Register -- Store type literalvalue register
@@ -109,11 +109,21 @@ newRegister ident@(Ident n) pointer = do
       return (reg_name, pointer)
 
 -- add variable to current context (i.e. give it a local var number)
+
 addVar :: Type -> Ident -> CP Register
 addVar t n = do
 	v:vs <- gets variables
 	when (Map.member n v) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top context"
 	new_reg@(new_reg_name, _) <- newRegister n True
+	let v' = Map.insert n (new_reg, t) v
+	modify (\e -> e { variables = v':vs } )
+	return new_reg
+
+addVarNonPointer :: Type -> Ident -> CP Register
+addVarNonPointer t n = do
+	v:vs <- gets variables
+	when (Map.member n v) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top context"
+	new_reg@(new_reg_name, _) <- newRegister n False
 	let v' = Map.insert n (new_reg, t) v
 	modify (\e -> e { variables = v':vs } )
 	return new_reg
@@ -170,9 +180,12 @@ compileExp expr = do
 	case expr of
 		EVar name -> do
 			(reg, typ) <- getVar name
-			t_reg <- newRegister (Ident "tmp") False
-			putInstruction $ Load typ t_reg reg
-			return (Just t_reg, typ)
+			case reg of
+				(r, True) -> do
+					t_reg <- newRegister (Ident "tmp") False
+					putInstruction $ Load typ t_reg reg
+					return (Just t_reg, typ)
+				(r, False) -> return (Just reg, typ)
 
 		ELitInt i -> do
 			t_reg <- newRegister (Ident "tmp") False
@@ -597,17 +610,24 @@ compileStm (SType typ stm) = do
 -- iterate all the statements in a function definition and compile them
 compileDef :: TopDef -> CP ()
 compileDef (FnDef retType (Ident name) args (Block stms)) = do
-  
-  modify (\e -> e { registers = Map.empty }) -- Clear register context
-  clearContexSpec -- Clear current "block" context
-  
-  putInstruction $ FunctionBegin name args retType
-  mapM_ (compileStm) stms
-  putInstruction $ FunctionEnd
-  
-  code_stack <- gets codeStack
-  prog_code <- gets programCode
-  modify (\e -> e { programCode = prog_code ++ [code_stack] })
+	modify (\e -> e { registers = Map.empty }) -- Clear register context
+	clearContexSpec -- Clear current "block" context
+	
+	params <- mapM registerArgs args
+	
+	putInstruction $ FunctionBegin name params retType
+	mapM_ (compileStm) stms
+	putInstruction $ FunctionEnd
+	
+	code_stack <- gets codeStack
+	prog_code <- gets programCode
+	modify (\e -> e { programCode = prog_code ++ [code_stack] })
+	
+	where
+		registerArgs :: Arg -> CP (Register, Type)
+		registerArgs (Arg t ident) = do
+			reg <- addVarNonPointer t ident
+			return (reg, t)
 {-do
 	clearContexSpec
 	
@@ -661,7 +681,7 @@ typeToLLVMType Void = "void"
 transLLVMInstr :: LLVMInstruction -> String
 transLLVMInstr instr = do
 	case instr of
-		FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transParlist(p) ++ ") {\nentry:"
+		FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transRegList(p) ++ ") {\nentry:"
 		FunctionEnd                  -> "}\n"
 		Return t reg                 -> "\tret " ++ typeToLLVMType(t) ++ transRegName(reg)
 		ReturnLit t lit              -> "\tret " ++ typeToLLVMType(t) ++ " " ++ lit
@@ -682,10 +702,10 @@ transLLVMInstr instr = do
 		otherwise -> fail $ "Trying to translate unknown instruction!"
 	where
 		-- translate a parameter list in a function
-		transParlist :: [Arg] -> String
+		{-transParlist :: [(Register, Type)] -> String
 		transParlist []   = ""
-		transParlist p@((Arg t (Ident n)):[]) = typeToLLVMType(t) ++ " %" ++ n
-		transParlist p@((Arg t (Ident n)):ps) = typeToLLVMType(t) ++ " %" ++ n ++ ", " ++ transParlist(ps)
+		transParlist p@((r, ptr):[]) = typeToLLVMType(t) ++ " %" ++ n
+		transParlist p@((r, ptr):ps) = typeToLLVMType(t) ++ " %" ++ n ++ ", " ++ transParlist(ps)-}
 		
 		transRegList :: [(Register, Type)] -> String
 		transRegList []   = ""
