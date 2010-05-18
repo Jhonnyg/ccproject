@@ -40,7 +40,7 @@ data LLVMInstruction =
 	| Store Type Register Register -- Store type fromreg toreg
     | Load Type Register Register -- Load type a b (%a = load type %b)
     | AddLit Type Register String String -- Add type to_reg value2 value1
-    | Add Type Register Register String -- Add type to_reg from_reg value1
+    | Add Type Register Register Register -- Add type to_reg reg1 reg2
     | Label String LLVMInstruction
     | ICmpNe Type Register Register String -- If cmp ne type reg_1 reg_2
     | BrCond typ
@@ -188,7 +188,12 @@ compileExp expr = do
 			t_reg <- newRegister (Ident "tmp") False
 			putInstruction $ AddLit Bool t_reg "0" "0"
 			return (Just t_reg, Bool)
-		EAdd e0 op e1 -> undefined
+		EAdd e0 Plus e1 -> do
+			(Just reg0, t) <- compileExp e0
+			(Just reg1, _) <- compileExp e1
+			t_reg <- newRegister (Ident "tmp") False
+			putInstruction $ Add t t_reg reg0 reg1
+			return (Just t_reg, t)
     {-
         t <- compileExp e0
         compileExp e1
@@ -637,9 +642,7 @@ transLLVMInstr instr = do
 	Load t (reg1, _) reg2        -> "\t" ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ transRegName(reg2)   -- Load type a b (%a = load type %b)
 	Add t reg1 reg2 val          -> "\t" ++ transRegName(reg1) ++ " = add " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
 	AddLit t (reg, _) val1 val2  -> "\t" ++ reg ++ " = add " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
-	--Label lbl instr              -> lbl ++ ": " ++ transLLVMInstr(instr)
-    --Add Type String String String -- Add type to_reg from_reg value
-    otherwise -> fail $ "Trying to translate unknown instruction!"
+	otherwise -> fail $ "Trying to translate unknown instruction!"
   
   where
     -- translate a parameter list in a function
