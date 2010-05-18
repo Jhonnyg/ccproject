@@ -446,8 +446,10 @@ compileStm (SType typ stm) = do
                 Just reg_val -> putInstruction $ Store var_typ reg_val reg    -- store tmp val to reg
                 Nothing      -> fail "yep!"
         Cond expr stmt		-> do
-            new_label_id <- getLabel
-            let new_label = "if.end" ++ (show new_label_id)
+            end_label_id <- getLabel
+            then_label_id <- getLabel
+            let end_label = "lab" ++ (show end_label_id)
+            let then_label = "lab" ++ (show then_label_id)
             (val,typ) <- compileExp expr
             case val of
                 Just reg@(_,ptr)    -> do
@@ -455,11 +457,12 @@ compileStm (SType typ stm) = do
                     tobool_reg <- newRegister (Ident "tobool") False
                     putInstruction $ AddLit Bool tmp_val_reg "0" "0"
                     putInstruction $ ICmpNe typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
-                    putInstruction $ BrCond tobool_reg new_label
+                    putInstruction $ BrCond tobool_reg then_label end_label
+                    --BrCond Register String String
                     --BrCond Register String String
                     
-                    putInstruction $ BrUnCond new_label
-                    putInstruction $ Label new_label Nop
+                    putInstruction $ BrUnCond end_label
+                    putInstruction $ Label end_label Nop
                 Nothing     -> fail $ "fail" 
                               
         SExp exprs		-> do
@@ -640,7 +643,7 @@ transLLVMInstr instr = do
 		AddRegs t reg1 reg2 reg3     -> "\t" ++ transRegName(reg1) ++ " = add " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
 		AddLit t (reg, _) val1 val2  -> "\t" ++ reg ++ " = add " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
 		ICmpNe t reg1 reg2 reg3      -> "\t" ++ transRegName(reg1) ++ " = icmp ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-		BrCond (reg,_) lab_t lab_f   -> "\t" ++ "br i1 %" ++ reg ++ ", label %" ++ lab_t ++ ", label %" ++ lab_f
+		BrCond (reg,_) lab_t lab_f   -> "\t" ++ "br i1 " ++ reg ++ ", label %" ++ lab_t ++ ", label %" ++ lab_f
 		BrUnCond label               -> "\t" ++ "br label %" ++ label
 		Label lbl instr              -> lbl ++ ": " ++ transLLVMInstr(instr)
 		--Add Type String String String -- Add type to_reg from_reg value
