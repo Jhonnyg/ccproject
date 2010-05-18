@@ -457,7 +457,7 @@ compileStm (SType typ stm) = do
                     tobool_reg <- newRegister (Ident "tobool") False
                     putInstruction $ Load typ tmp_reg reg -- load reg to tmp_reg
                     putInstruction $ ICmpNe typ tobool_reg tmp_reg "0"
-                    putInstruction $ BrCond typ
+                    putInstruction $ BrCond typ tobool_reg 
                     
               Nothing     -> fail $ "fail" -}
                               
