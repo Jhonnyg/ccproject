@@ -38,11 +38,13 @@ data LLVMInstruction =
 	| Alloc Type Register -- Alloc type register
 	| StoreLit Type String Register -- Store type literalvalue register
 	| Store Type Register Register -- Store type fromreg toreg
-	| Load Type Register Register -- Load type a b (%a = load type %b)
-	| AddLit Type Register String String -- Add type to_reg value2 value1
-	| Add Type Register Register String -- Add type to_reg from_reg value1
-	| Label String
-	| ICmpNe Type Register Register String -- If cmp ne type reg_1 reg_2
+    | Load Type Register Register -- Load type a b (%a = load type %b)
+    | AddLit Type Register String String -- Add type to_reg value2 value1
+    | Add Type Register Register String -- Add type to_reg from_reg value1
+    | Label String LLVMInstruction
+    | ICmpNe Type Register Register String -- If cmp ne type reg_1 reg_2
+    | BrCond typ
+    | BrUnCond String
 	deriving (Show)
 --Add typ inc_reg tmp_reg "1"
 
@@ -455,9 +457,9 @@ compileStm (SType typ stm) = do
                     tobool_reg <- newRegister (Ident "tobool") False
                     putInstruction $ Load typ tmp_reg reg -- load reg to tmp_reg
                     putInstruction $ ICmpNe typ tobool_reg tmp_reg "0"
-                    putInstruction $ 
+                    putInstruction $ BrCond typ
                     
-                Nothing     -> fail $ "fail" -}
+              Nothing     -> fail $ "fail" -}
                               
         SExp exprs		-> do
             compileExp exprs
