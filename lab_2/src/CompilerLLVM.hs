@@ -369,7 +369,9 @@ compileDecl t (Init ident expr) = do -- variable declaration with initialization
     ELitFalse -> putInstruction $ (StoreLit t "0" reg_name)
     otherwise -> do
       (reg_from, t') <- compileExp expr
-      putInstruction $ (Store t reg_from reg_name)
+      case reg_from of
+        Just reg_from' -> putInstruction $ (Store t reg_from' reg_name)
+        Nothing        -> fail $ "Mega fail!"
 	
 	
 
