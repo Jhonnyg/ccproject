@@ -24,20 +24,23 @@ newtype CPM m a = CPM { unCPM :: StateT Env m a }
 -- Type alias to increase readability
 type CP a = CPM Err a
 
+type Register = (String, Bool) -- (register name, pointer)
+
 -- "Abstract" LLVM Instructions
 --   will be translated into strings later on
 data LLVMInstruction =
 	Nop
-	| Return Type String              -- Return type register
+	| Return Type Register              -- Return type register
 	| ReturnLit Type String           -- Return type literal
 	| ReturnVoid                      -- Return void
 	| FunctionBegin String [Arg] Type -- FunctiosBegin name params returntype
 	| FunctionEnd
-	| Alloc Type String -- Alloc type register
-	| StoreLit Type String String -- Store type literalvalue register
-	| Store Type String String -- Store type fromreg toreg
-  | Load Type String String -- Load type a b (%a = load type %b)
-  | Add Type String String String -- Add type to_reg from_reg/value2 value1
+	| Alloc Type Register -- Alloc type register
+	| StoreLit Type String Register -- Store type literalvalue register
+	| Store Type Register Register -- Store type fromreg toreg
+  | Load Type Register Register -- Load type a b (%a = load type %b)
+--  | AddLit Type Register String String -- Add type to_reg value2 value1
+  | Add Type Register Register String -- Add type to_reg from_reg value1
 	deriving (Show)
 --Add typ inc_reg tmp_reg "1"
 
@@ -70,7 +73,7 @@ stdFuncs = [(Ident "printInt", (External (NoAttrib CCC), ([Int],Void)) ),
 data Env = Env {
 		 classname :: String,
 		 signatures :: Map Ident MethodDefinition,
-		 variables :: [Map Ident (String, Type)],
+		 variables :: [Map Ident (Register, Type)],
 		 registers :: Map Ident Int,
 		 nextVarIndex :: Integer,
 		 nextLabelIndex :: Integer,
@@ -86,35 +89,37 @@ getLabel = do
 	return next_label
 
 -- new register
-newRegister :: Ident -> CP String
-newRegister ident@(Ident n) = do
+newRegister :: Ident -> Bool -> CP Register -- register "ident" -> pointer -> (register name, pointer)
+newRegister ident@(Ident n) pointer = do
   regs <- gets registers
   case Map.lookup ident regs of
     Just i -> do
       modify (\e -> e { registers = Map.adjust (+ 1) ident regs } )
-      return $ "%" ++ n ++ (show (i + 1))
+      let reg_name = "%" ++ n ++ (show (i + 1))
+      return (reg_name, pointer)
     Nothing -> do
       modify (\e -> e { registers = Map.insert ident 0 regs} )
-      return $ "%" ++ n ++ "0"
+      let reg_name = "%" ++ n ++ "0"
+      return (reg_name, pointer)
 
 -- add variable to current context (i.e. give it a local var number)
-addVar :: Type -> Ident -> CP String
+addVar :: Type -> Ident -> CP Register
 addVar t n = do
 	v:vs <- gets variables
 	when (Map.member n v) $ fail $ "adding a variable " ++ (show n) ++ " that is already in top context"
-	new_reg_name <- newRegister n
-	let v' = Map.insert n (new_reg_name, t) v
+	new_reg@(new_reg_name, _) <- newRegister n True
+	let v' = Map.insert n (new_reg, t) v
 	modify (\e -> e { variables = v':vs } )
-	return new_reg_name
+	return new_reg
 
 -- get local var number and type from variable name
-getVar :: Ident -> CP (String, Type) -- (regname, type)
+getVar :: Ident -> CP (Register, Type) -- (regname, type)
 getVar n = do
 	vars <- gets variables
 	rtrn (catMaybes ((map (Map.lookup n) vars)))
   where
 	-- if we cant find anything, make sure we fail
-	  rtrn :: [(String, Type)] -> CP (String, Type)
+	  rtrn :: [(Register, Type)] -> CP (Register, Type)
 	  rtrn [] = fail $ (show n) ++ " referenced, but not found!"
 	  rtrn (x:xs) = return x
 
@@ -154,14 +159,15 @@ compile :: String -> Program -> Err [String]
 compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 
 -- compile expressions
-compileExp :: Expr -> CP (Maybe String, Type)
+compileExp :: Expr -> CP (Maybe Register, Type)
 compileExp expr = do
   case expr of
     EVar name -> do
       (reg, typ) <- getVar name
-      t_reg <- newRegister (Ident "tmp")
+      t_reg <- newRegister (Ident "tmp") False
       putInstruction $ Load typ t_reg reg
       return (Just t_reg, typ)
+{-
     ELitInt i -> do
       t_reg <- newRegister (Ident "tmp")
       putInstruction $ Add Int t_reg "0" (show i)
@@ -179,7 +185,6 @@ compileExp expr = do
       putInstruction $ Add Bool t_reg "0" "0"
       return (Just t_reg, Bool)
 --		otherwise -> fail $ "Trying to compile an unknown expression."
-{-			
 		EApp ident@(Ident n) expList 		-> do
 			mapM compileExp expList
 			--mapM (\e -> decrStack) expList
@@ -365,9 +370,9 @@ compileDecl t (Init ident expr) = do -- variable declaration with initialization
   case expr of
     ELitInt i  -> putInstruction $ (StoreLit t (show i) reg_name)
     ELitDoub i -> putInstruction $ (StoreLit t (show i) reg_name)
-    ELitTrue -> putInstruction $ (StoreLit t "1" reg_name)
-    ELitFalse -> putInstruction $ (StoreLit t "0" reg_name)
-    otherwise -> do
+    ELitTrue   -> putInstruction $ (StoreLit t "1" reg_name)
+    ELitFalse  -> putInstruction $ (StoreLit t "0" reg_name)
+    otherwise  -> do
       (val, t') <- compileExp expr
       case val of
           Just reg_from -> putInstruction $ (Store t reg_from reg_name)
@@ -388,15 +393,15 @@ compileStm (SType typ stm) = do
         modify (\e -> e { variables = vs } )
   		
   		-- Return statements!	
-      Ret (ELitInt i)   -> putInstruction $ (Return Int (show i))
-      Ret (ELitTrue)    -> putInstruction $ (Return Bool "1")
-      Ret (ELitFalse)   -> putInstruction $ (Return Bool "0")
-      Ret (ELitDoub i)  -> putInstruction $ (Return Doub (show i))
+      Ret (ELitInt i)   -> putInstruction $ (ReturnLit Int (show i))
+      Ret (ELitTrue)    -> putInstruction $ (ReturnLit Bool "1")
+      Ret (ELitFalse)   -> putInstruction $ (ReturnLit Bool "0")
+      Ret (ELitDoub i)  -> putInstruction $ (ReturnLit Doub (show i))
       Ret expr          -> do
                     (val,typ) <- compileExp expr
                     case val of
                         Just reg_val -> do
-                            ret_val <- newRegister (Ident "retval")
+                            ret_val <- newRegister (Ident "retval") False
                             putInstruction $ Load typ ret_val reg_val
                             putInstruction $ Return typ ret_val --Return Type String
                             
@@ -407,16 +412,16 @@ compileStm (SType typ stm) = do
       Decl t itmList    -> mapM_ (compileDecl t) itmList
       Decr name         -> do
                     (reg,typ) <- getVar name
-                    (tmp_reg) <- newRegister (Ident "tmp")
-                    (inc_reg) <- newRegister (Ident "inc")
+                    (tmp_reg) <- newRegister (Ident "tmp") False
+                    (inc_reg) <- newRegister (Ident "inc") False
                     putInstruction $ Load typ tmp_reg reg
                     putInstruction $ Add typ inc_reg tmp_reg "-1"
                     putInstruction $ Store typ inc_reg reg
                     
       Incr name         -> do
                     (reg,typ) <- getVar name
-                    (tmp_reg) <- newRegister (Ident "tmp")
-                    (inc_reg) <- newRegister (Ident "inc")
+                    (tmp_reg) <- newRegister (Ident "tmp") False
+                    (inc_reg) <- newRegister (Ident "inc") False
                     putInstruction $ Load typ tmp_reg reg
                     putInstruction $ Add typ inc_reg tmp_reg "1"
                     putInstruction $ Store typ inc_reg reg
@@ -427,7 +432,7 @@ compileStm (SType typ stm) = do
                     
                     case val of
                         Just reg_val -> do
-                                tmp_reg <- newRegister (Ident "tmp")
+                                tmp_reg <- newRegister (Ident "tmp") False
                                 --putInstruction $ Load exp_typ tmp_reg reg_val -- load val into tmp reg
                                 putInstruction $ Store var_typ reg_val reg    -- store tmp val to reg
                         Nothing      -> fail "yep!"
@@ -595,14 +600,14 @@ transLLVMInstr instr = do
   case instr of
     FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transParlist(p) ++ ") {\nentry:"
     FunctionEnd         -> "}\n"
-    Return t reg        -> "  ret " ++ typeToLLVMType(t) ++ " " ++ reg
+    Return t reg        -> "  ret " ++ typeToLLVMType(t) ++ transRegName(reg)
     ReturnLit t lit     -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
     ReturnVoid          -> "  ret void"
-    Alloc t reg         -> "  " ++ reg ++ " = alloca " ++ typeToLLVMType(t)
-    StoreLit t v reg    -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ "* " ++ reg
-    Store t reg1 reg2   -> "  store " ++ typeToLLVMType(t) ++ " " ++ reg1 ++ ", " ++ typeToLLVMType(t) ++ "* " ++ reg2
-    Load t reg1 reg2    -> "  " ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ "* " ++ reg2   -- Load type a b (%a = load type %b)
-    Add t reg1 reg2 val -> "  " ++ reg1 ++ " = add " ++ typeToLLVMType(t) ++ " " ++ reg2 ++ ", " ++ val
+    Alloc t (reg, _)    -> "  " ++ reg ++ " = alloca " ++ typeToLLVMType(t)
+    StoreLit t v reg    -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg)
+    Store t reg1 reg2   -> "  store " ++ typeToLLVMType(t) ++ transRegName(reg1) ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg2)
+    Load t (reg1, _) reg2    -> "  " ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ transRegName(reg2)   -- Load type a b (%a = load type %b)
+    Add t reg1 reg2 val -> "  " ++ transRegName(reg1) ++ " = add " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
     --Add Type String String String -- Add type to_reg from_reg value
     otherwise -> fail $ "Trying to translate unknown instruction!"
   
@@ -612,6 +617,11 @@ transLLVMInstr instr = do
     transParlist []   = ""
     transParlist p@((Arg t (Ident n)):[]) = typeToLLVMType(t) ++ " " ++ n
     transParlist p@((Arg t (Ident n)):ps) = typeToLLVMType(t) ++ " " ++ n ++ ", " ++ transParlist(ps)
+    
+    -- translate register name
+    transRegName :: Register -> String
+    transRegName (reg_name, True)  = "* " ++ reg_name
+    transRegName (reg_name, False) = " " ++ reg_name
 
 
 -- translate instructions into strings
