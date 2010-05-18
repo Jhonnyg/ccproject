@@ -151,16 +151,14 @@ compile :: String -> Program -> Err [String]
 compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 
 -- compile expressions
-compileExp :: Expr -> CP (String, Type)
-compileExp expr = undefined
-	{-do
+compileExp :: Expr -> CP (Maybe String, Type)
+compileExp expr = 
 	case expr of
-		EVar name 		-> do
-			incrStack
-			(local, typ) <- getVar name
-			when (typ == Doub) incrStack
-			putInstruction (Load typ local)
-			return typ
+		EVar name -> do
+			(reg, typ) <- getVar name
+			return (Just reg, typ)
+		otherwise -> fail $ "Trying to compile an unknown expression."
+{-
 		ELitInt i 		-> do
 			incrStack
 			putInstruction (PushInt i)
@@ -357,25 +355,11 @@ compileExp expr = undefined
 
 -- compile variable declarations
 compileDecl :: Type -> Item -> CP ()
-compileDecl t (NoInit ident) = do
+compileDecl t (NoInit ident) = do -- variable declaration with NO initialization expression
 	reg_name <- addVar t ident
 	putInstruction $ Alloc t reg_name
-	{-case t of 
-		Doub 	  -> do
-			putInstruction $ PushDoub 0.0
-			incrStack
-			incrStack
-			putInstruction $ (Store t local)
-			decrStack
-			decrStack
-		otherwise -> do
-			putInstruction $ PushInt 0
-			incrStack
-			putInstruction $ (Store t local)
-			decrStack-}
-
--- variable declaration with initialization expression
-compileDecl t (Init ident expr) = do
+	
+compileDecl t (Init ident expr) = do -- variable declaration with initialization expression
   reg_name <- addVar t ident
   putInstruction $ Alloc t reg_name
   case expr of
