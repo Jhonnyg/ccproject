@@ -479,8 +479,8 @@ compileStm (SType typ stm) = do
                     putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
                     putInstruction $ ICmpNe typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
                     putInstruction $ BrCond tobool_reg then_label end_label
-                    --BrCond Register String String
-                    --BrCond Register String String
+                    putInstruction $ Label then_label Nop
+                    compileStm stmt
                     
                     putInstruction $ BrUnCond end_label
                     putInstruction $ Label end_label Nop
