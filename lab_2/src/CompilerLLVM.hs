@@ -404,6 +404,14 @@ compileStm (SType typ stm) = do
       
       Decl t itmList    -> mapM_ (compileDecl t) itmList
       Ass name expr     -> undefined
+      Decr name         -> do
+                    (reg,typ) <- getVar name
+                    (tmp_reg) <- newRegister (Ident "tmp")
+                    (inc_reg) <- newRegister (Ident "inc")
+                    putInstruction $ Load typ tmp_reg reg
+                    putInstruction $ Add typ inc_reg tmp_reg "-1"
+                    putInstruction $ Store typ inc_reg reg
+                    
       Incr name         -> do
                     (reg,typ) <- getVar name
                     (tmp_reg) <- newRegister (Ident "tmp")
