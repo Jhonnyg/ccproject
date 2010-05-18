@@ -42,6 +42,7 @@ data LLVMInstruction =
 	| AddLit Type Register String String -- Add type to_reg value2 value1
 	| Add Type Register Register String -- Add type to_reg from_reg value1
 	| Label String
+	| ICmpNe Type Register Register String -- If cmp ne type reg_1 reg_2
 	deriving (Show)
 --Add typ inc_reg tmp_reg "1"
 
@@ -185,6 +186,16 @@ compileExp expr = do
       t_reg <- newRegister (Ident "tmp") False
       putInstruction $ AddLit Bool t_reg "0" "0"
       return (Just t_reg, Bool)
+    EAdd e0 op e1 -> undefined
+    {-
+        t <- compileExp e0
+        compileExp e1
+        decrStack
+        when (t == Doub) decrStack
+        case op of 
+                Plus 		-> putInstruction $ Add t
+                otherwise 	-> putInstruction $ Sub t
+        return t -}
 {-
 --		otherwise -> fail $ "Trying to compile an unknown expression."
 		EApp ident@(Ident n) expList 		-> do
@@ -376,82 +387,82 @@ compileDecl t (Init ident expr) = do -- variable declaration with initialization
 compileStm :: Stmt -> CP ()
 compileStm (SType typ stm) = do
     case stm of
-      Empty 			     -> fail $ "Trying to compile empty statement."
-      
-      -- Block statement (add a new clean context)
-      BStmt (Block stmts) 	-> do
-        old_vars <- gets variables
-        modify (\e -> e { variables = Map.empty : old_vars } )
-        mapM_ compileStm stmts
-        v:vs <- gets variables
-        modify (\e -> e { variables = vs } )
-  		
-  		-- Return statements!	
-      Ret (ELitInt i)   -> putInstruction $ (ReturnLit Int (show i))
-      Ret (ELitTrue)    -> putInstruction $ (ReturnLit Bool "1")
-      Ret (ELitFalse)   -> putInstruction $ (ReturnLit Bool "0")
-      Ret (ELitDoub i)  -> putInstruction $ (ReturnLit Doub (show i))
-      Ret expr          -> do
-                    (val,typ) <- compileExp expr
-                    case val of
-                        Just reg_val -> do
-                            --ret_val <- newRegister (Ident "retval") False
-                            --putInstruction $ Load typ ret_val reg_val
-                            putInstruction $ Return typ reg_val --Return Type String
-                            
-                        Nothing -> fail $ "Return statement failed"
-
-      VRet             -> putInstruction $ ReturnVoid
-      
-      Decl t itmList    -> mapM_ (compileDecl t) itmList
-      Decr name         -> do
-                    (reg,typ) <- getVar name
-                    (tmp_reg) <- newRegister (Ident "tmp") False
-                    (inc_reg) <- newRegister (Ident "inc") False
-                    putInstruction $ Load typ tmp_reg reg
-                    putInstruction $ Add typ inc_reg tmp_reg "-1"
-                    putInstruction $ Store typ inc_reg reg
-
-      Incr name         -> do
-          (reg,typ) <- getVar name
-          (tmp_reg) <- newRegister (Ident "tmp") False
-          (inc_reg) <- newRegister (Ident "inc") False
-          putInstruction $ Load typ tmp_reg reg
-          putInstruction $ Add typ inc_reg tmp_reg "1"
-          putInstruction $ Store typ inc_reg reg
-                            
-      Ass name expr     -> do
-          (val,exp_typ) <- compileExp expr
-          (reg,var_typ) <- getVar name
-          
-          case val of
-              Just reg_val -> do
-                  tmp_reg <- newRegister (Ident "tmp") False
-                  --putInstruction $ Load exp_typ tmp_reg reg_val -- load val into tmp reg
-                  putInstruction $ Store var_typ reg_val reg    -- store tmp val to reg
-              Nothing      -> fail "yep!"
-      Cond expr stmt		-> do
-          new_label_id <- getLabel
-          let new_label = "lab" ++ (show new_label_id)
-          
-          -- compare expression
-          (val,typ) <- compileExp expr
-          return()
-          
-          {- 
-          case val of
-              Just reg    -> do
-                  tmp_reg <- newRegister (Ident "tmp")
-                  bool_reg <- newRegister
-                  putInstruction $ Load typ tmp_reg reg -- load reg to tmp_reg
-                  putInstruction $ ICmpNe typ bool_reg tmp_reg "0"
-                  
-              Nothing     -> fail $ "fail" -}
-                            
-      SExp exprs		-> do
-          compileExp exprs
-          return ()
-      unknown -> fail $ "Trying to compile an unknown statement! " ++ (show stm)
+        Empty 			     -> fail $ "Trying to compile empty statement."
+        
+        -- Block statement (add a new clean context)
+        BStmt (Block stmts) 	-> do
+            old_vars <- gets variables
+            modify (\e -> e { variables = Map.empty : old_vars } )
+            mapM_ compileStm stmts
+            v:vs <- gets variables
+            modify (\e -> e { variables = vs } )
+                    
+                    -- Return statements!	
+        Ret (ELitInt i)   -> putInstruction $ (ReturnLit Int (show i))
+        Ret (ELitTrue)    -> putInstruction $ (ReturnLit Bool "1")
+        Ret (ELitFalse)   -> putInstruction $ (ReturnLit Bool "0")
+        Ret (ELitDoub i)  -> putInstruction $ (ReturnLit Doub (show i))
+        Ret expr          -> do
+            (val,typ) <- compileExp expr
+            case val of
+                Just reg_val -> do
+                    --ret_val <- newRegister (Ident "retval") False
+                    --putInstruction $ Load typ ret_val reg_val
+                    putInstruction $ Return typ reg_val --Return Type String
+                Nothing -> fail $ "Return statement failed"
+        
+        VRet             -> putInstruction $ ReturnVoid
+        
+        Decl t itmList    -> mapM_ (compileDecl t) itmList
+        Decr name         -> do
+            (reg,typ) <- getVar name
+            (tmp_reg) <- newRegister (Ident "tmp") False
+            (inc_reg) <- newRegister (Ident "inc") False
+            putInstruction $ Load typ tmp_reg reg
+            putInstruction $ Add typ inc_reg tmp_reg "-1"
+            putInstruction $ Store typ inc_reg reg
+                      
+        Incr name         -> do
+            (reg,typ) <- getVar name
+            (tmp_reg) <- newRegister (Ident "tmp") False
+            (inc_reg) <- newRegister (Ident "inc") False
+            putInstruction $ Load typ tmp_reg reg
+            putInstruction $ Add typ inc_reg tmp_reg "1"
+            putInstruction $ Store typ inc_reg reg
+                              
+        Ass name expr     -> do
+            (val,exp_typ) <- compileExp expr
+            (reg,var_typ) <- getVar name
+            
+            case val of
+                Just reg_val -> do
+                    tmp_reg <- newRegister (Ident "tmp") False
+                    --putInstruction $ Load exp_typ tmp_reg reg_val -- load val into tmp reg
+                    putInstruction $ Store var_typ reg_val reg    -- store tmp val to reg
+                Nothing      -> fail "yep!"
+        Cond expr stmt		-> do
+            new_label_id <- getLabel
+            let new_label = "lab" ++ (show new_label_id)
+            
+            -- compare expression
+            (val,typ) <- compileExp expr
+            return()
+            
+            {- 
+            case val of
+                Just reg    -> do
+                    tmp_reg <- newRegister (Ident "tmp") False
+                    tobool_reg <- newRegister (Ident "tobool") False
+                    putInstruction $ Load typ tmp_reg reg -- load reg to tmp_reg
+                    putInstruction $ ICmpNe typ tobool_reg tmp_reg "0"
+                    putInstruction $ 
+                    
+                Nothing     -> fail $ "fail" -}
+                              
+        SExp exprs		-> do
+            compileExp exprs
+            return ()
+        unknown -> fail $ "Trying to compile an unknown statement! " ++ (show stm)
         
 --compileExp :: Expr -> CP (String, Type)
 
@@ -614,16 +625,16 @@ transLLVMInstr :: LLVMInstruction -> String
 transLLVMInstr instr = do
   case instr of
     FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transParlist(p) ++ ") {\nentry:"
-    FunctionEnd                  -> "}\n"
-    Return t reg                 -> "  ret " ++ typeToLLVMType(t) ++ transRegName(reg)
-    ReturnLit t lit              -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
-    ReturnVoid                   -> "  ret void"
-    Alloc t (reg, _)             -> "  " ++ reg ++ " = alloca " ++ typeToLLVMType(t)
-    StoreLit t v reg             -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg)
-    Store t reg1 reg2            -> "  store " ++ typeToLLVMType(t) ++ transRegName(reg1) ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg2)
-    Load t (reg1, _) reg2        -> "  " ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ transRegName(reg2)   -- Load type a b (%a = load type %b)
-    Add t reg1 reg2 val          -> "  " ++ transRegName(reg1) ++ " = add " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
-    AddLit t (reg, _) val1 val2  -> "  " ++ reg ++ " = add " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
+    FunctionEnd            -> "}\n"
+    Return t reg           -> "  ret " ++ typeToLLVMType(t) ++ transRegName(reg)
+    ReturnLit t lit        -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
+    ReturnVoid             -> "  ret void"
+    Alloc t (reg, _)       -> "  " ++ reg ++ " = alloca " ++ typeToLLVMType(t)
+    StoreLit t v reg       -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg)
+    Store t reg1 reg2      -> "  store " ++ typeToLLVMType(t) ++ transRegName(reg1) ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg2)
+    Load t (reg1, _) reg2  -> "  " ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ transRegName(reg2)   -- Load type a b (%a = load type %b)
+    Add t reg1 reg2 val    -> "  " ++ transRegName(reg1) ++ " = add " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
+    AddLit t reg val1 val2 -> "  " ++ transRegName(reg) ++ " = add " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
     --Add Type String String String -- Add type to_reg from_reg value
     otherwise -> fail $ "Trying to translate unknown instruction!"
   
