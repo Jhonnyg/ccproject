@@ -409,6 +409,14 @@ compileStm (SType typ stm) = do
       
       Decl t itmList    -> mapM_ (compileDecl t) itmList
       Ass name expr     -> undefined
+      Decr name         -> do
+                    (reg,typ) <- getVar name
+                    (tmp_reg) <- newRegister (Ident "tmp")
+                    (inc_reg) <- newRegister (Ident "inc")
+                    putInstruction $ Load typ tmp_reg reg
+                    putInstruction $ Add typ inc_reg tmp_reg "-1"
+                    putInstruction $ Store typ inc_reg reg
+                    
       Incr name         -> do
                     (reg,typ) <- getVar name
                     (tmp_reg) <- newRegister (Ident "tmp")
@@ -597,7 +605,6 @@ transLLVMInstr instr = do
     Store t reg1 reg2 -> "  store " ++ typeToLLVMType(t) ++ " %" ++ reg1 ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg2
     Load t reg1 reg2 -> "  %" ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ "* %" ++ reg2   -- Load type a b (%a = load type %b)
     Add t reg1 reg2 val -> "  %" ++ reg1 ++ " = add " ++ typeToLLVMType(t) ++ " %" ++ reg2 ++ ", " ++ val
-    --Add Type String String String -- Add type to_reg from_reg value
     otherwise -> fail $ "Trying to translate unknown instruction!"
   
   where
