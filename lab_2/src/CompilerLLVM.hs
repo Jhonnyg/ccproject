@@ -251,15 +251,7 @@ compileExp expr = do
 				otherwise 	-> putInstruction $ Divide t
 			return t
 
-		EAdd e0 op e1		-> do
-			t <- compileExp e0
-			compileExp e1
-			decrStack
-			when (t == Doub) decrStack
-			case op of 
-				Plus 		-> putInstruction $ Add t
-				otherwise 	-> putInstruction $ Sub t
-			return t
+
 		ERel e0 op e1 		-> do
 			t <- compileExp e0
 			compileExp e1
@@ -622,16 +614,16 @@ transLLVMInstr :: LLVMInstruction -> String
 transLLVMInstr instr = do
   case instr of
     FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transParlist(p) ++ ") {\nentry:"
-    FunctionEnd            -> "}\n"
-    Return t reg           -> "  ret " ++ typeToLLVMType(t) ++ transRegName(reg)
-    ReturnLit t lit        -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
-    ReturnVoid             -> "  ret void"
-    Alloc t (reg, _)       -> "  " ++ reg ++ " = alloca " ++ typeToLLVMType(t)
-    StoreLit t v reg       -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg)
-    Store t reg1 reg2      -> "  store " ++ typeToLLVMType(t) ++ transRegName(reg1) ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg2)
-    Load t (reg1, _) reg2  -> "  " ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ transRegName(reg2)   -- Load type a b (%a = load type %b)
-    Add t reg1 reg2 val    -> "  " ++ transRegName(reg1) ++ " = add " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
-    AddLit t reg val1 val2 -> "  " ++ transRegName(reg) ++ " = add " ++ typeToLLVMType(t) ++ val1 ++ ", " ++ val2
+    FunctionEnd                  -> "}\n"
+    Return t reg                 -> "  ret " ++ typeToLLVMType(t) ++ transRegName(reg)
+    ReturnLit t lit              -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
+    ReturnVoid                   -> "  ret void"
+    Alloc t (reg, _)             -> "  " ++ reg ++ " = alloca " ++ typeToLLVMType(t)
+    StoreLit t v reg             -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg)
+    Store t reg1 reg2            -> "  store " ++ typeToLLVMType(t) ++ transRegName(reg1) ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg2)
+    Load t (reg1, _) reg2        -> "  " ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ transRegName(reg2)   -- Load type a b (%a = load type %b)
+    Add t reg1 reg2 val          -> "  " ++ transRegName(reg1) ++ " = add " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
+    AddLit t (reg, _) val1 val2  -> "  " ++ reg ++ " = add " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
     --Add Type String String String -- Add type to_reg from_reg value
     otherwise -> fail $ "Trying to translate unknown instruction!"
   
