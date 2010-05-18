@@ -38,9 +38,10 @@ data LLVMInstruction =
 	| Alloc Type Register -- Alloc type register
 	| StoreLit Type String Register -- Store type literalvalue register
 	| Store Type Register Register -- Store type fromreg toreg
-  | Load Type Register Register -- Load type a b (%a = load type %b)
-  | AddLit Type Register String String -- Add type to_reg value2 value1
-  | Add Type Register Register String -- Add type to_reg from_reg value1
+	| Load Type Register Register -- Load type a b (%a = load type %b)
+	| AddLit Type Register String String -- Add type to_reg value2 value1
+	| Add Type Register Register String -- Add type to_reg from_reg value1
+	| Label String
 	deriving (Show)
 --Add typ inc_reg tmp_reg "1"
 
@@ -418,25 +419,46 @@ compileStm (SType typ stm) = do
                     putInstruction $ Load typ tmp_reg reg
                     putInstruction $ Add typ inc_reg tmp_reg "-1"
                     putInstruction $ Store typ inc_reg reg
-                    
+
       Incr name         -> do
-                    (reg,typ) <- getVar name
-                    (tmp_reg) <- newRegister (Ident "tmp") False
-                    (inc_reg) <- newRegister (Ident "inc") False
-                    putInstruction $ Load typ tmp_reg reg
-                    putInstruction $ Add typ inc_reg tmp_reg "1"
-                    putInstruction $ Store typ inc_reg reg
+          (reg,typ) <- getVar name
+          (tmp_reg) <- newRegister (Ident "tmp") False
+          (inc_reg) <- newRegister (Ident "inc") False
+          putInstruction $ Load typ tmp_reg reg
+          putInstruction $ Add typ inc_reg tmp_reg "1"
+          putInstruction $ Store typ inc_reg reg
                             
       Ass name expr     -> do
-                    (val,exp_typ) <- compileExp expr
-                    (reg,var_typ) <- getVar name
-                    
-                    case val of
-                        Just reg_val -> do
-                                tmp_reg <- newRegister (Ident "tmp") False
-                                --putInstruction $ Load exp_typ tmp_reg reg_val -- load val into tmp reg
-                                putInstruction $ Store var_typ reg_val reg    -- store tmp val to reg
-                        Nothing      -> fail "yep!"
+          (val,exp_typ) <- compileExp expr
+          (reg,var_typ) <- getVar name
+          
+          case val of
+              Just reg_val -> do
+                  tmp_reg <- newRegister (Ident "tmp") False
+                  --putInstruction $ Load exp_typ tmp_reg reg_val -- load val into tmp reg
+                  putInstruction $ Store var_typ reg_val reg    -- store tmp val to reg
+              Nothing      -> fail "yep!"
+      Cond expr stmt		-> do
+          new_label_id <- getLabel
+          let new_label = "lab" ++ (show new_label_id)
+          
+          -- compare expression
+          (val,typ) <- compileExp expr
+          return()
+          
+          {- 
+          case val of
+              Just reg    -> do
+                  tmp_reg <- newRegister (Ident "tmp")
+                  bool_reg <- newRegister
+                  putInstruction $ Load typ tmp_reg reg -- load reg to tmp_reg
+                  putInstruction $ ICmpNe typ bool_reg tmp_reg "0"
+                  
+              Nothing     -> fail $ "fail" -}
+                            
+      SExp exprs		-> do
+          compileExp exprs
+          return ()
       unknown -> fail $ "Trying to compile an unknown statement! " ++ (show stm)
         
 --compileExp :: Expr -> CP (String, Type)
