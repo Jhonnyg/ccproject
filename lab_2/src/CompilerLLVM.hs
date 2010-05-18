@@ -24,7 +24,7 @@ newtype CPM m a = CPM { unCPM :: StateT Env m a }
 -- Type alias to increase readability
 type CP a = CPM Err a
 
-type Register = (String, Bool) -- (register name, pointer)
+type Register = (String, Bool)
 
 -- "Abstract" LLVM Instructions
 --   will be translated into strings later on
@@ -46,6 +46,7 @@ data LLVMInstruction =
 	| ICmpNe Type Register Register Register -- If cmp ne type reg_1 reg_2
 	| BrCond Register String String
 	| BrUnCond String
+	| FuncCall Ident Type [(Register, Type)] Register -- reg = call rettype @name(i32 %t0) 
 	deriving (Show)
 --Add typ inc_reg tmp_reg "1"
 
@@ -195,15 +196,22 @@ compileExp expr = do
 			t_reg <- newRegister (Ident "tmp") False
 			putInstruction $ AddRegs op t t_reg reg0 reg1
 			return (Just t_reg, t)
-    {-
-        t <- compileExp e0
-        compileExp e1
-        decrStack
-        when (t == Doub) decrStack
-        case op of 
-                Plus 		-> putInstruction $ Add t
-                otherwise 	-> putInstruction $ Sub t
-        return t -}
+			
+		EApp ident@(Ident n) expList -> do
+			regs <- mapM compileExp expList
+			let regs' = tidyRegs regs
+			method_sig@(mlinktyp, (_, ret_t)) <- lookFun ident
+			case mlinktyp of
+				Internal _ -> do
+					t_reg <- newRegister (Ident "tmp") False
+					putInstruction $ FuncCall ident ret_t regs' t_reg
+					return (Just t_reg, ret_t)
+				otherwise  -> fail $ "Unknown function call!"
+			--
+	where
+		tidyRegs :: [(Maybe Register, Type)] -> [(Register, Type)]
+		tidyRegs [] = []
+		tidyRegs ((Just r, t):rs) = (r, t):tidyRegs(rs)
 {-
 --		otherwise -> fail $ "Trying to compile an unknown expression."
 		EApp ident@(Ident n) expList 		-> do
@@ -644,9 +652,10 @@ transLLVMInstr instr = do
 		Add op t reg1 reg2 val          -> "\t" ++ transRegName(reg1) ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
 		AddRegs op t reg1 reg2 reg3     -> "\t" ++ transRegName(reg1) ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
 		AddLit op t (reg, _) val1 val2  -> "\t" ++ reg ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
-		ICmpNe t reg1 reg2 reg3      -> "\t" ++ transRegName(reg1) ++ " = icmpe ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-		BrCond (reg,_) lab_t lab_f   -> "\t" ++ "br i1 %" ++ reg ++ ", label %" ++ lab_t ++ ", label %" ++ lab_f
-		BrUnCond label               -> "\t" ++ "br label %" ++ label
+		ICmpNe t reg1 reg2 reg3        -> "\t" ++ transRegName(reg1) ++ " = icmpe ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+		BrCond (reg,_) lab_t lab_f     -> "\t" ++ "br i1 %" ++ reg ++ ", label %" ++ lab_t ++ ", label %" ++ lab_f
+		BrUnCond label                 -> "\t" ++ "br label %" ++ label
+		FuncCall (Ident n) t rs out_r  -> "\t" ++ transRegName(out_r) ++ " = call " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
 		--Label lbl instr              -> lbl ++ ": " ++ transLLVMInstr(instr)
 		--Add Type String String String -- Add type to_reg from_reg value
 		otherwise -> fail $ "Trying to translate unknown instruction!"
@@ -654,8 +663,13 @@ transLLVMInstr instr = do
 		-- translate a parameter list in a function
 		transParlist :: [Arg] -> String
 		transParlist []   = ""
-		transParlist p@((Arg t (Ident n)):[]) = typeToLLVMType(t) ++ " " ++ n
-		transParlist p@((Arg t (Ident n)):ps) = typeToLLVMType(t) ++ " " ++ n ++ ", " ++ transParlist(ps)
+		transParlist p@((Arg t (Ident n)):[]) = typeToLLVMType(t) ++ " %" ++ n
+		transParlist p@((Arg t (Ident n)):ps) = typeToLLVMType(t) ++ " %" ++ n ++ ", " ++ transParlist(ps)
+		
+		transRegList :: [(Register, Type)] -> String
+		transRegList []   = ""
+		transRegList (((r, _), t):[]) = typeToLLVMType(t) ++ " " ++ r
+		transRegList (((r, _), t):rs) = typeToLLVMType(t) ++ " " ++ r ++ ", " ++ transRegList(rs)
 
 		-- translate register name
 		transRegName :: Register -> String
@@ -680,7 +694,7 @@ compileTree :: Program -> CPM Err [String]
 compileTree (Program defs) = do
 	
 	-- store defs
-	--mapM addDef defs
+	mapM addDef defs
 	
 	-- compile all function defines
 	mapM compileDef defs
