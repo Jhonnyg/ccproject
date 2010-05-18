@@ -163,30 +163,30 @@ compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 -- compile expressions
 compileExp :: Expr -> CP (Maybe Register, Type)
 compileExp expr = do
-  case expr of
-    EVar name -> do
-      (reg, typ) <- getVar name
-      t_reg <- newRegister (Ident "tmp") False
-      putInstruction $ Load typ t_reg reg
-      return (Just t_reg, typ)
-      
-    ELitInt i -> do
-      t_reg <- newRegister (Ident "tmp") False
-      putInstruction $ AddLit Int t_reg "0" (show i)
-      return (Just t_reg, Int)
-    ELitDoub d -> do
-      t_reg <- newRegister (Ident "tmp") False
-      putInstruction $ AddLit Doub t_reg "0.0" (show d)
-      return (Just t_reg, Doub)
-    ELitTrue -> do
-      t_reg <- newRegister (Ident "tmp") False
-      putInstruction $ AddLit Bool t_reg "0" "1"
-      return (Just t_reg, Bool)
-    ELitFalse -> do
-      t_reg <- newRegister (Ident "tmp") False
-      putInstruction $ AddLit Bool t_reg "0" "0"
-      return (Just t_reg, Bool)
-    EAdd e0 op e1 -> undefined
+	case expr of
+		EVar name -> do
+			(reg, typ) <- getVar name
+			t_reg <- newRegister (Ident "tmp") False
+			putInstruction $ Load typ t_reg reg
+			return (Just t_reg, typ)
+
+		ELitInt i -> do
+			t_reg <- newRegister (Ident "tmp") False
+			putInstruction $ AddLit Int t_reg "0" (show i)
+			return (Just t_reg, Int)
+		ELitDoub d -> do
+			t_reg <- newRegister (Ident "tmp") False
+			putInstruction $ AddLit Doub t_reg "0.0" (show d)
+			return (Just t_reg, Doub)
+		ELitTrue -> do
+			t_reg <- newRegister (Ident "tmp") False
+			putInstruction $ AddLit Bool t_reg "0" "1"
+			return (Just t_reg, Bool)
+		ELitFalse -> do
+			t_reg <- newRegister (Ident "tmp") False
+			putInstruction $ AddLit Bool t_reg "0" "0"
+			return (Just t_reg, Bool)
+		EAdd e0 op e1 -> undefined
     {-
         t <- compileExp e0
         compileExp e1
