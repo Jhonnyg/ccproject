@@ -28,9 +28,10 @@ type CP a = CPM Err a
 --   will be translated into strings later on
 data LLVMInstruction =
 	Nop
-	| Return Type String -- Return type register
-	| ReturnLit Type String -- Return type literal
-	| FunctionBegin String Type -- FunctiosBegin name returntype
+	| Return Type String              -- Return type register
+	| ReturnLit Type String           -- Return type literal
+	| ReturnVoid                      -- Return void
+	| FunctionBegin String [Arg] Type -- FunctiosBegin name params returntype
 	| FunctionEnd
 	| Alloc Type String -- Alloc type register
 	| StoreLit Type String String -- Store type literalvalue register
@@ -107,7 +108,7 @@ addVar t n = do
 	return new_reg_name
 
 -- get local var number and type from variable name
-getVar :: Ident -> CP (String, Type)
+getVar :: Ident -> CP (String, Type) -- (regname, type)
 getVar n = do
 	vars <- gets variables
 	rtrn (catMaybes ((map (Map.lookup n) vars)))
@@ -154,15 +155,13 @@ compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 
 -- compile expressions
 compileExp :: Expr -> CP (Maybe String, Type)
-compileExp expr = undefined
-	{-do
+compileExp expr = do
 	case expr of
-		EVar name 		-> do
-			incrStack
-			(local, typ) <- getVar name
-			when (typ == Doub) incrStack
-			putInstruction (Load typ local)
-			return typ
+		EVar name -> do
+			(reg, typ) <- getVar name
+			return (Just reg, typ)
+		otherwise -> fail $ "Trying to compile an unknown expression."
+{-
 		ELitInt i 		-> do
 			incrStack
 			putInstruction (PushInt i)
@@ -359,25 +358,11 @@ compileExp expr = undefined
 
 -- compile variable declarations
 compileDecl :: Type -> Item -> CP ()
-compileDecl t (NoInit ident) = do
+compileDecl t (NoInit ident) = do -- variable declaration with NO initialization expression
 	reg_name <- addVar t ident
 	putInstruction $ Alloc t reg_name
-	{-case t of 
-		Doub 	  -> do
-			putInstruction $ PushDoub 0.0
-			incrStack
-			incrStack
-			putInstruction $ (Store t local)
-			decrStack
-			decrStack
-		otherwise -> do
-			putInstruction $ PushInt 0
-			incrStack
-			putInstruction $ (Store t local)
-			decrStack-}
-
--- variable declaration with initialization expression
-compileDecl t (Init ident expr) = do
+	
+compileDecl t (Init ident expr) = do -- variable declaration with initialization expression
   reg_name <- addVar t ident
   putInstruction $ Alloc t reg_name
   case expr of
@@ -390,9 +375,6 @@ compileDecl t (Init ident expr) = do
       case val of
           Just reg_from -> putInstruction $ (Store t reg_from reg_name)
           Nothing -> fail $ "lol"
-	
-	
-
 
 -- compile statements
 compileStm :: Stmt -> CP ()
@@ -414,13 +396,16 @@ compileStm (SType typ stm) = do
       Ret (ELitFalse)   -> putInstruction $ (Return Bool "0")
       Ret (ELitDoub i)  -> putInstruction $ (Return Doub (show i))
       Ret expr          -> do
-                    (ret_val,typ) <- compileExp expr
-                    case ret_val of
-                        Just a -> do
+                    (val,typ) <- compileExp expr
+                    case val of
+                        Just reg_val -> do
                             ret_val <- newRegister (Ident "retval")
-                            return()
+                            putInstruction $ Load typ ret_val reg_val
+                            putInstruction $ Return typ ret_val --Return Type String
                             
                         Nothing -> fail $ "Return statement failed"
+
+      VRet             -> putInstruction $ ReturnVoid
       
       Decl t itmList    -> mapM_ (compileDecl t) itmList
       Ass name expr     -> undefined
@@ -542,7 +527,7 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
   modify (\e -> e { registers = Map.empty }) -- Clear register context
   clearContexSpec -- Clear current "block" context
   
-  putInstruction $ FunctionBegin name retType
+  putInstruction $ FunctionBegin name args retType
   mapM_ (compileStm) stms
   putInstruction $ FunctionEnd
   
@@ -597,21 +582,31 @@ typeToLLVMType :: Type -> String
 typeToLLVMType Int = "i32"
 typeToLLVMType Doub = "double"
 typeToLLVMType Bool = "i2"
+typeToLLVMType Void = "void"
 
 transLLVMInstr :: LLVMInstruction -> String
 transLLVMInstr instr = do
   case instr of
-    FunctionBegin name rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "() {\nentry:" -- TODO: fix parameter list!
-    FunctionEnd -> "}"
-    Return t reg    -> "  ret " ++ typeToLLVMType(t) ++ " " ++ reg
-    ReturnLit t lit -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
-    Alloc t reg     -> "  %" ++ reg ++ " = alloca " ++ typeToLLVMType(t)
+    FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transParlist(p) ++ ") {\nentry:" -- TODO: fix parameter list!
+    FunctionEnd       -> "}\n"
+    Return t reg      -> "  ret " ++ typeToLLVMType(t) ++ " %" ++ reg
+    ReturnLit t lit   -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
+    ReturnVoid        -> "  ret void"
+    Alloc t reg       -> "  %" ++ reg ++ " = alloca " ++ typeToLLVMType(t)
     StoreLit t v reg  -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg
-    Store t reg1 reg2 -> "  store " ++ typeToLLVMType(t) ++ "* %" ++ reg1 ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg2
+    Store t reg1 reg2 -> "  store " ++ typeToLLVMType(t) ++ " %" ++ reg1 ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg2
     Load t reg1 reg2 -> "  %" ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ "* %" ++ reg2   -- Load type a b (%a = load type %b)
     Add t reg1 reg2 val -> "  %" ++ reg1 ++ " = add " ++ typeToLLVMType(t) ++ " %" ++ reg2 ++ ", " ++ val
     --Add Type String String String -- Add type to_reg from_reg value
     otherwise -> fail $ "Trying to translate unknown instruction!"
+  
+  where
+    -- translate a parameter list in a function
+    transParlist :: [Arg] -> String
+    transParlist []   = ""
+    transParlist p@((Arg t (Ident n)):[]) = typeToLLVMType(t) ++ " %" ++ n
+    transParlist p@((Arg t (Ident n)):ps) = typeToLLVMType(t) ++ " %" ++ n ++ ", " ++ transParlist(ps)
+
 
 -- translate instructions into strings
 transLLVMBlock :: [LLVMInstruction] -> CP ()
