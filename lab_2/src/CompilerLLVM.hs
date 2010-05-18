@@ -42,8 +42,8 @@ data LLVMInstruction =
     | AddLit Type Register String String -- Add type to_reg value2 value1
     | Add Type Register Register String -- Add type to_reg from_reg value1
     | Label String LLVMInstruction
-    | ICmpNe Type Register Register String -- If cmp ne type reg_1 reg_2
-    | BrCond typ
+    | ICmpNe Type Register Register Register -- If cmp ne type reg_1 reg_2
+    | BrCond Register String String
     | BrUnCond String
 	deriving (Show)
 --Add typ inc_reg tmp_reg "1"
@@ -637,6 +637,10 @@ transLLVMInstr instr = do
 	Load t (reg1, _) reg2        -> "\t" ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ transRegName(reg2)   -- Load type a b (%a = load type %b)
 	Add t reg1 reg2 val          -> "\t" ++ transRegName(reg1) ++ " = add " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
 	AddLit t (reg, _) val1 val2  -> "\t" ++ reg ++ " = add " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
+    ICmpNe t reg1 reg2 reg3      -> "\t" ++ transRegName(reg1) ++ " = icmpe ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+    --| ICmpNe Type Register Register Register -- If cmp ne type reg_1 reg_2
+    BrCond (reg,_) lab_t lab_f   -> "\t" ++ "br i1 %" ++ reg ++ ", label %" ++ lab_t ++ ", label %" ++ lab_f
+    BrUnCond label               -> "\t" ++ "br label %" ++ label
 	--Label lbl instr              -> lbl ++ ": " ++ transLLVMInstr(instr)
     --Add Type String String String -- Add type to_reg from_reg value
     otherwise -> fail $ "Trying to translate unknown instruction!"
