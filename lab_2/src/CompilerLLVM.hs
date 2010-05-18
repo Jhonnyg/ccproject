@@ -36,8 +36,8 @@ data LLVMInstruction =
 	| Alloc Type String -- Alloc type register
 	| StoreLit Type String String -- Store type literalvalue register
 	| Store Type String String -- Store type fromreg toreg
-        | Load Type String String -- Load type a b (%a = load type %b)
-        | Add Type String String String -- Add type to_reg from_reg value
+  | Load Type String String -- Load type a b (%a = load type %b)
+  | Add Type String String String -- Add type to_reg from_reg/value2 value1
 	deriving (Show)
 --Add typ inc_reg tmp_reg "1"
 
@@ -92,10 +92,10 @@ newRegister ident@(Ident n) = do
   case Map.lookup ident regs of
     Just i -> do
       modify (\e -> e { registers = Map.adjust (+ 1) ident regs } )
-      return $ n ++ (show (i + 1))
+      return $ "%" ++ n ++ (show (i + 1))
     Nothing -> do
       modify (\e -> e { registers = Map.insert ident 0 regs} )
-      return $ n ++ "0"
+      return $ "%" ++ n ++ "0"
 
 -- add variable to current context (i.e. give it a local var number)
 addVar :: Type -> Ident -> CP String
@@ -156,33 +156,28 @@ compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 -- compile expressions
 compileExp :: Expr -> CP (Maybe String, Type)
 compileExp expr = do
-	case expr of
-		EVar name -> do
-			(reg, typ) <- getVar name
-			return (Just reg, typ)
-		otherwise -> fail $ "Trying to compile an unknown expression."
-{-
-		ELitInt i 		-> do
-			incrStack
-			putInstruction (PushInt i)
-			return Int
-			
-		ELitDoub d 		-> 	do
-			incrStack
-			incrStack
-			putInstruction (PushDoub d)
-			return Doub
-			
-		ELitTrue		-> do
-			incrStack
-			putInstruction (PushInt 1)
-			return Int
-			
-		ELitFalse		->	 do
-			incrStack
-			putInstruction (PushInt 0)
-			return Int
-			
+  case expr of
+    EVar name -> do
+      (reg, typ) <- getVar name
+      return (Just reg, typ)
+    ELitInt i -> do
+      t_reg <- newRegister (Ident "tmp")
+      putInstruction $ Add Int t_reg "0" (show i)
+      return (Just t_reg, Int)
+    ELitDoub d -> do
+      t_reg <- newRegister (Ident "tmp")
+      putInstruction $ Add Doub t_reg "0.0" (show d)
+      return (Just t_reg, Doub)
+    ELitTrue -> do
+      t_reg <- newRegister (Ident "tmp")
+      putInstruction $ Add Bool t_reg "0" "1"
+      return (Just t_reg, Bool)
+    ELitFalse -> do
+      t_reg <- newRegister (Ident "tmp")
+      putInstruction $ Add Bool t_reg "0" "0"
+      return (Just t_reg, Bool)
+--		otherwise -> fail $ "Trying to compile an unknown expression."
+{-			
 		EApp ident@(Ident n) expList 		-> do
 			mapM compileExp expList
 			--mapM (\e -> decrStack) expList
@@ -587,16 +582,16 @@ typeToLLVMType Void = "void"
 transLLVMInstr :: LLVMInstruction -> String
 transLLVMInstr instr = do
   case instr of
-    FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transParlist(p) ++ ") {\nentry:" -- TODO: fix parameter list!
-    FunctionEnd       -> "}\n"
-    Return t reg      -> "  ret " ++ typeToLLVMType(t) ++ " %" ++ reg
-    ReturnLit t lit   -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
-    ReturnVoid        -> "  ret void"
-    Alloc t reg       -> "  %" ++ reg ++ " = alloca " ++ typeToLLVMType(t)
-    StoreLit t v reg  -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg
-    Store t reg1 reg2 -> "  store " ++ typeToLLVMType(t) ++ " %" ++ reg1 ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg2
-    Load t reg1 reg2 -> "  %" ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ "* %" ++ reg2   -- Load type a b (%a = load type %b)
-    Add t reg1 reg2 val -> "  %" ++ reg1 ++ " = add " ++ typeToLLVMType(t) ++ " %" ++ reg2 ++ ", " ++ val
+    FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transParlist(p) ++ ") {\nentry:"
+    FunctionEnd         -> "}\n"
+    Return t reg        -> "  ret " ++ typeToLLVMType(t) ++ " " ++ reg
+    ReturnLit t lit     -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
+    ReturnVoid          -> "  ret void"
+    Alloc t reg         -> "  " ++ reg ++ " = alloca " ++ typeToLLVMType(t)
+    StoreLit t v reg    -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ "* " ++ reg
+    Store t reg1 reg2   -> "  store " ++ typeToLLVMType(t) ++ " " ++ reg1 ++ ", " ++ typeToLLVMType(t) ++ "* " ++ reg2
+    Load t reg1 reg2    -> "  " ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ "* " ++ reg2   -- Load type a b (%a = load type %b)
+    Add t reg1 reg2 val -> "  " ++ reg1 ++ " = add " ++ typeToLLVMType(t) ++ " " ++ reg2 ++ ", " ++ val
     --Add Type String String String -- Add type to_reg from_reg value
     otherwise -> fail $ "Trying to translate unknown instruction!"
   
@@ -604,8 +599,8 @@ transLLVMInstr instr = do
     -- translate a parameter list in a function
     transParlist :: [Arg] -> String
     transParlist []   = ""
-    transParlist p@((Arg t (Ident n)):[]) = typeToLLVMType(t) ++ " %" ++ n
-    transParlist p@((Arg t (Ident n)):ps) = typeToLLVMType(t) ++ " %" ++ n ++ ", " ++ transParlist(ps)
+    transParlist p@((Arg t (Ident n)):[]) = typeToLLVMType(t) ++ " " ++ n
+    transParlist p@((Arg t (Ident n)):ps) = typeToLLVMType(t) ++ " " ++ n ++ ", " ++ transParlist(ps)
 
 
 -- translate instructions into strings
