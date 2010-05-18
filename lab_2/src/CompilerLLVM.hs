@@ -28,13 +28,14 @@ type CP a = CPM Err a
 --   will be translated into strings later on
 data LLVMInstruction =
 	Nop
-	| Return Type String -- Return type register
-	| ReturnLit Type String -- Return type literal
+	| Return Type String              -- Return type register
+	| ReturnLit Type String           -- Return type literal
+	| ReturnVoid                      -- Return void
 	| FunctionBegin String [Arg] Type -- FunctiosBegin name params returntype
 	| FunctionEnd
-	| Alloc Type String -- Alloc type register
-	| StoreLit Type String String -- Store type literalvalue register
-	| Store Type String String -- Store type fromreg toreg
+	| Alloc Type String               -- Alloc type register
+	| StoreLit Type String String     -- Store type literalvalue register
+	| Store Type String String        -- Store type fromreg toreg
 	deriving (Show)
 
 {-data Value =
@@ -408,6 +409,7 @@ compileStm (SType typ stm) = do
       Ret (ELitTrue)   -> putInstruction $ (Return Bool "1")
       Ret (ELitFalse)  -> putInstruction $ (Return Bool "0")
       Ret (ELitDoub i) -> putInstruction $ (Return Doub (show i))
+      VRet             -> putInstruction $ ReturnVoid
       
       Decl t itmList		-> mapM_ (compileDecl t) itmList
       
@@ -573,25 +575,27 @@ typeToLLVMType :: Type -> String
 typeToLLVMType Int = "i32"
 typeToLLVMType Doub = "double"
 typeToLLVMType Bool = "i2"
+typeToLLVMType Void = "void"
 
 transLLVMInstr :: LLVMInstruction -> String
 transLLVMInstr instr = do
   case instr of
     FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transParlist(p) ++ ") {\nentry:" -- TODO: fix parameter list!
-    FunctionEnd -> "}"
-    Return t reg    -> "  ret " ++ typeToLLVMType(t) ++ " " ++ reg
-    ReturnLit t lit -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
-    Alloc t reg     -> "  %" ++ reg ++ " = alloca " ++ typeToLLVMType(t)
+    FunctionEnd       -> "}\n"
+    Return t reg      -> "  ret " ++ typeToLLVMType(t) ++ " " ++ reg
+    ReturnLit t lit   -> "  ret " ++ typeToLLVMType(t) ++ " " ++ lit
+    ReturnVoid        -> "  ret void"
+    Alloc t reg       -> "  %" ++ reg ++ " = alloca " ++ typeToLLVMType(t)
     StoreLit t v reg  -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg
     Store t reg1 reg2 -> "  store " ++ typeToLLVMType(t) ++ "* %" ++ reg1 ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg2
-    otherwise -> fail $ "Trying to translate unknown instruction!"
+    otherwise         -> "Trying to translate unknown instruction!"
   
   where
     -- translate a parameter list in a function
     transParlist :: [Arg] -> String
     transParlist []   = ""
-    transParlist p@((Arg t (Ident n)):[]) = typeToLLVMType(t) ++ " " ++ n
-    transParlist p@((Arg t (Ident n)):ps)  = typeToLLVMType(t) ++ " " ++ n ++ ", " ++ transParlist(ps)
+    transParlist p@((Arg t (Ident n)):[]) = typeToLLVMType(t) ++ " %" ++ n
+    transParlist p@((Arg t (Ident n)):ps) = typeToLLVMType(t) ++ " %" ++ n ++ ", " ++ transParlist(ps)
 
 -- translate instructions into strings
 transLLVMBlock :: [LLVMInstruction] -> CP ()
