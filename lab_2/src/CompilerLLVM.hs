@@ -159,7 +159,9 @@ compileExp expr = do
   case expr of
     EVar name -> do
       (reg, typ) <- getVar name
-      return (Just reg, typ)
+      t_reg <- newRegister (Ident "tmp")
+      putInstruction $ Load typ t_reg reg
+      return (Just t_reg, typ)
     ELitInt i -> do
       t_reg <- newRegister (Ident "tmp")
       putInstruction $ Add Int t_reg "0" (show i)
@@ -426,8 +428,8 @@ compileStm (SType typ stm) = do
                     case val of
                         Just reg_val -> do
                                 tmp_reg <- newRegister (Ident "tmp")
-                                putInstruction $ Load var_typ tmp_reg reg_val -- load val into tmp reg
-                                putInstruction $ Store var_typ tmp_reg reg    -- store tmp val to reg
+                                --putInstruction $ Load exp_typ tmp_reg reg_val -- load val into tmp reg
+                                putInstruction $ Store var_typ reg_val reg    -- store tmp val to reg
                         Nothing      -> fail "yep!"
       unknown -> fail $ "Trying to compile an unknown statement! " ++ (show stm)
         
