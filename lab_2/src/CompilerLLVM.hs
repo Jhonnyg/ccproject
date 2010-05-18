@@ -35,7 +35,10 @@ data LLVMInstruction =
 	| Alloc Type String -- Alloc type register
 	| StoreLit Type String String -- Store type literalvalue register
 	| Store Type String String -- Store type fromreg toreg
+        | Load Type String String -- Load type a b (%a = load type %b)
+        | Add Type String String String -- Add type to_reg from_reg value
 	deriving (Show)
+--Add typ inc_reg tmp_reg "1"
 
 {-data Value =
   Integer
@@ -129,28 +132,28 @@ clearContexSpec = do
 -- Create an empty environment
 emptyEnv :: String -> Env
 emptyEnv name = Env {
-                 classname = name,
-                 signatures = Map.fromList stdFuncs,
-                 variables = [Map.empty],
-                 registers = Map.empty,
-								 nextVarIndex = 0,
-								 nextLabelIndex = 0,
-								 codeStack = [],
-								 programCode = [],
-								 compiledCode = [
-                                                                 "declare void @printInt(i32 %x)",
-                                                                 "declare void @printDouble(double %x)",
-                                                                 "declare void @printString(i8* %x)",
-                                                                 "declare i32 @readInt()",
-                                                                 "declare double @readDouble()"
-                                                                 ] }
+                classname = name,
+                signatures = Map.fromList stdFuncs,
+                variables = [Map.empty],
+                registers = Map.empty,
+                nextVarIndex = 0,
+                nextLabelIndex = 0,
+                codeStack = [],
+                programCode = [],
+                compiledCode = [
+                "declare void @printInt(i32 %x)",
+                "declare void @printDouble(double %x)",
+                "declare void @printString(i8* %x)",
+                "declare i32 @readInt()",
+                "declare double @readDouble()"
+                ] }
 
 -- main entry point for compiler
 compile :: String -> Program -> Err [String]
 compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 
 -- compile expressions
-compileExp :: Expr -> CP (String, Type)
+compileExp :: Expr -> CP (Maybe String, Type)
 compileExp expr = undefined
 	{-do
 	case expr of
@@ -383,8 +386,10 @@ compileDecl t (Init ident expr) = do
     ELitTrue -> putInstruction $ (StoreLit t "1" reg_name)
     ELitFalse -> putInstruction $ (StoreLit t "0" reg_name)
     otherwise -> do
-      (reg_from, t') <- compileExp expr
-      putInstruction $ (Store t reg_from reg_name)
+      (val, t') <- compileExp expr
+      case val of
+          Just reg_from -> putInstruction $ (Store t reg_from reg_name)
+          Nothing -> fail $ "lol"
 	
 	
 
@@ -404,15 +409,34 @@ compileStm (SType typ stm) = do
         modify (\e -> e { variables = vs } )
   		
   		-- Return statements!	
-      Ret (ELitInt i)  -> putInstruction $ (Return Int (show i))
-      Ret (ELitTrue)   -> putInstruction $ (Return Bool "1")
-      Ret (ELitFalse)  -> putInstruction $ (Return Bool "0")
-      Ret (ELitDoub i) -> putInstruction $ (Return Doub (show i))
+      Ret (ELitInt i)   -> putInstruction $ (Return Int (show i))
+      Ret (ELitTrue)    -> putInstruction $ (Return Bool "1")
+      Ret (ELitFalse)   -> putInstruction $ (Return Bool "0")
+      Ret (ELitDoub i)  -> putInstruction $ (Return Doub (show i))
+      Ret expr          -> do
+                    (ret_val,typ) <- compileExp expr
+                    case ret_val of
+                        Just a -> do
+                            ret_val <- newRegister (Ident "retval")
+                            return()
+                            
+                        Nothing -> fail $ "Return statement failed"
       
-      Decl t itmList		-> mapM_ (compileDecl t) itmList
-      
-      unknown -> fail $ "Trying to compile an unknown statement!"
+      Decl t itmList    -> mapM_ (compileDecl t) itmList
+      Ass name expr     -> undefined
+      Incr name         -> do
+                    (reg,typ) <- getVar name
+                    (tmp_reg) <- newRegister (Ident "tmp")
+                    (inc_reg) <- newRegister (Ident "inc")
+                    putInstruction $ Load typ tmp_reg reg
+                    putInstruction $ Add typ inc_reg tmp_reg "1"
+                    putInstruction $ Store typ inc_reg reg
+                            
+                            --Store Type String String
+      --getVar :: Ident -> CP (String, Type)
+      unknown -> fail $ "Trying to compile an unknown statement! " ++ (show stm)
         
+--compileExp :: Expr -> CP (String, Type)
 
     {- do
 	case stm of
@@ -584,6 +608,9 @@ transLLVMInstr instr = do
     Alloc t reg     -> "  %" ++ reg ++ " = alloca " ++ typeToLLVMType(t)
     StoreLit t v reg  -> "  store " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg
     Store t reg1 reg2 -> "  store " ++ typeToLLVMType(t) ++ "* %" ++ reg1 ++ ", " ++ typeToLLVMType(t) ++ "* %" ++ reg2
+    Load t reg1 reg2 -> "  %" ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ "* %" ++ reg2   -- Load type a b (%a = load type %b)
+    Add t reg1 reg2 val -> "  %" ++ reg1 ++ " = add " ++ typeToLLVMType(t) ++ " %" ++ reg2 ++ ", " ++ val
+    --Add Type String String String -- Add type to_reg from_reg value
     otherwise -> fail $ "Trying to translate unknown instruction!"
 
 -- translate instructions into strings
