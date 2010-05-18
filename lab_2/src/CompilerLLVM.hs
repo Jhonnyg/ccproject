@@ -467,12 +467,35 @@ compileStm (SType typ stm) = do
                     putInstruction $ ICmpNe typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
                     putInstruction $ BrCond tobool_reg then_label end_label
                     putInstruction $ Label then_label Nop
-                    compileStm stmt
+                    compileStm stmt                    
+                    putInstruction $ BrUnCond end_label
+                    putInstruction $ Label end_label Nop
+                Nothing     -> fail $ "if fail" 
+        CondElse  expr ifs els  -> do
+            end_label_id <- getLabel
+            then_label_id <- getLabel
+            else_label_id <- getLabel
+            let end_label = "lab" ++ (show end_label_id)
+            let then_label = "lab" ++ (show then_label_id)
+            let else_label = "lab" ++ (show else_label_id)
+            (val,typ) <- compileExp expr
+            case val of
+                Just reg@(_,ptr)    -> do
+                    tmp_val_reg <- newRegister (Ident "tmp") False
+                    tobool_reg <- newRegister (Ident "tobool") False
+                    putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
+                    putInstruction $ ICmpNe typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
+                    putInstruction $ BrCond tobool_reg then_label else_label
+                    putInstruction $ Label then_label Nop
+                    compileStm ifs
+                    putInstruction $ BrUnCond end_label
+                    
+                    putInstruction $ Label else_label Nop
+                    compileStm els
                     
                     putInstruction $ BrUnCond end_label
                     putInstruction $ Label end_label Nop
-                Nothing     -> fail $ "fail" 
-                              
+                Nothing     -> fail $ "if-else fail" 
         SExp exprs		-> do
             compileExp exprs
             return ()
