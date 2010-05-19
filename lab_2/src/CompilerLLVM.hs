@@ -254,6 +254,49 @@ compileExp expr = do
                 Div -> putInstruction $ Division t t_reg reg0 reg1
                 Mod -> putInstruction $ Modulus t t_reg reg0 reg1
             return (Just t_reg,t)
+        EAnd e0 e1		-> do
+            end_label_id <- getLabel
+            cond_label_id <- getLabel
+            true_label_id <- getLabel
+            false_label_id <- getLabel
+            let cond_label = "lab" ++ (show cond_label_id)
+            let end_label = "lab" ++ (show end_label_id)
+            let true_label = "lab" ++ (show true_label_id)
+            let false_label = "lab" ++ (show false_label_id)
+
+            tobool_reg1 <- newRegister (Ident "tobool") False
+            tobool_reg2 <- newRegister (Ident "tobool") False
+            tmp_val_reg <- newRegister (Ident "tmp_val") False
+            t_reg <- newRegister (Ident "t_reg") False
+            true_reg <- newRegister (Ident "true_reg") False
+            false_reg <- newRegister (Ident "false_reg") False
+            return_reg <- newRegister (Ident "return_reg") True
+
+            
+            (Just reg0,t) <- compileExp e0
+            (Just reg1,_) <- compileExp e1
+            
+            putInstruction $ Alloc t return_reg
+            putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
+            putInstruction $ IfCmp NE t tobool_reg1 reg0 tmp_val_reg -- save result to tobool_reg
+            putInstruction $ BrCond tobool_reg1 cond_label false_label
+            
+            putInstruction $ Label cond_label Nop--(IfCmp NE t tobool_reg2 reg1 tmp_val_reg)
+            putInstruction $ IfCmp NE t tobool_reg2 reg1 tmp_val_reg
+            putInstruction $ BrCond tobool_reg2 true_label false_label
+            -- TEST exp2
+            
+            putInstruction $ Label true_label (AddLit Plus Bool true_reg "0" "1")
+            putInstruction $ Store t true_reg return_reg 
+            putInstruction $ BrUnCond end_label
+            
+            putInstruction $ Label false_label (AddLit Plus Bool false_reg "0" "0")
+            putInstruction $ Store t false_reg return_reg 
+            putInstruction $ BrUnCond end_label
+
+            putInstruction $ Label end_label Nop            
+            
+            return (Just return_reg,Bool)
             
         otherwise -> do
             fail $ show expr
