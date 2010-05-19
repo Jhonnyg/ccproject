@@ -43,7 +43,7 @@ data LLVMInstruction =
 	| Add AddOp Type Register Register String -- Add type to_reg reg1 value
 	| AddRegs AddOp Type Register Register Register -- Add type to_reg reg1 reg2
 	| Label String LLVMInstruction
-	| ICmpNe Type Register Register Register -- If cmp ne type reg_1 reg_2
+	| IfCmp RelOp Type Register Register Register
 	| BrCond Register String String
 	| BrUnCond String
 	| FuncCall Ident Type [(Register, Type)] Register -- reg = call rettype @name(i32 %t0) 
@@ -220,7 +220,12 @@ compileExp expr = do
 					putInstruction $ FuncCall ident ret_t regs' t_reg
 					return (Just t_reg, ret_t)
 				otherwise  -> fail $ "Unknown function call!"
-			--
+		ERel e0 op e1 -> do
+			(Just reg0, t) <- compileExp e0
+			(Just reg1, _) <- compileExp e1
+			t_reg <- newRegister (Ident "tmp") False
+			
+			return (Just t_reg, t)
 	where
 		tidyRegs :: [(Maybe Register, Type)] -> [(Register, Type)]
 		tidyRegs [] = []
@@ -477,7 +482,7 @@ compileStm (SType typ stm) = do
                     tmp_val_reg <- newRegister (Ident "tmp") False
                     tobool_reg <- newRegister (Ident "tobool") False
                     putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
-                    putInstruction $ ICmpNe typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
+                    putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
                     putInstruction $ BrCond tobool_reg then_label end_label
                     putInstruction $ Label then_label Nop
                     compileStm stmt                    
@@ -497,7 +502,7 @@ compileStm (SType typ stm) = do
                     tmp_val_reg <- newRegister (Ident "tmp") False
                     tobool_reg <- newRegister (Ident "tobool") False
                     putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
-                    putInstruction $ ICmpNe typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
+                    putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
                     putInstruction $ BrCond tobool_reg then_label else_label
                     putInstruction $ Label then_label Nop
                     compileStm ifs
@@ -508,7 +513,52 @@ compileStm (SType typ stm) = do
                     
                     putInstruction $ BrUnCond end_label
                     putInstruction $ Label end_label Nop
-                Nothing     -> fail $ "if-else fail" 
+                Nothing     -> fail $ "if-else fail"
+        While expr stmt		-> do
+            end_label_id <- getLabel
+            loop_label_id <- getLabel
+            then_label_id <- getLabel
+            let end_label = "lab" ++ (show end_label_id)
+            let loop_label = "lab" ++ (show loop_label_id)
+            let then_label = "lab" ++ (show then_label_id)
+            
+            (val,typ) <- compileExp expr
+            
+            case val of
+                Just reg -> do
+                    tmp_val_reg <- newRegister (Ident "tmp") False
+                    tobool_reg <- newRegister (Ident "tobool") False
+                    
+                    --  Load Type Register Register -- Load type a b (%a = load type %b)
+                    putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
+                    putInstruction $ BrUnCond loop_label
+                    putInstruction $ Label loop_label Nop
+
+                    -- putInstruction $ Load typ
+                    -- need to load the value of the expressions
+                    putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg
+                    putInstruction $ BrCond tobool_reg then_label end_label
+                    putInstruction $ Label then_label Nop
+                    compileStm stmt
+                    
+                    putInstruction $ BrUnCond loop_label
+                    
+                    putInstruction $ Label end_label Nop
+                    
+                Nothing -> fail $ "while-stm fail"
+			
+            {-label_id_1 <- getLabel
+			label_id_2 <- getLabel
+			let label_1 = "lab" ++ (show label_id_1)
+			let label_2 = "lab" ++ (show label_id_2)
+
+			putInstruction $ Goto label_2
+			putInstruction $ Label label_1
+			compileStm stmt
+			putInstruction $ Label label_2
+			compileExp expr	
+			putInstruction $ IfNe label_1 -}
+            
         SExp exprs		-> do
             compileExp exprs
             return ()
@@ -680,26 +730,35 @@ typeToLLVMType Void = "void"
 
 transLLVMInstr :: LLVMInstruction -> String
 transLLVMInstr instr = do
-	case instr of
-		FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transRegList(p) ++ ") {\nentry:"
-		FunctionEnd                  -> "}\n"
-		Return t reg                 -> "\tret " ++ typeToLLVMType(t) ++ transRegName(reg)
-		ReturnLit t lit              -> "\tret " ++ typeToLLVMType(t) ++ " " ++ lit
-		ReturnVoid                   -> "\tret void"
-		Alloc t (reg, _)             -> "\t" ++ reg ++ " = alloca " ++ typeToLLVMType(t)
-		StoreLit t v reg             -> "\tstore " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg)
-		Store t reg1 reg2            -> "\tstore " ++ typeToLLVMType(t) ++ transRegName(reg1) ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg2)
-		Load t (reg1, _) reg2        -> "\t" ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ transRegName(reg2)   -- Load type a b (%a = load type %b)
-		Add op t reg1 reg2 val          -> "\t" ++ transRegName(reg1) ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
-		AddRegs op t reg1 reg2 reg3     -> "\t" ++ transRegName(reg1) ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-		AddLit op t (reg, _) val1 val2  -> "\t" ++ reg ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
-		ICmpNe t reg1 reg2 reg3      -> "\t" ++ transRegName(reg1) ++ " = icmp ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-		BrCond (reg,_) lab_t lab_f   -> "\t" ++ "br i1 " ++ reg ++ ", label %" ++ lab_t ++ ", label %" ++ lab_f
-		BrUnCond label               -> "\t" ++ "br label %" ++ label
-		Label lbl instr              -> lbl ++ ": " ++ transLLVMInstr(instr)
-		FuncCall (Ident n) t rs out_r  -> "\t" ++ transRegName(out_r) ++ " = call " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
-		--Add Type String String String -- Add type to_reg from_reg value
-		otherwise -> fail $ "Trying to translate unknown instruction!"
+    case instr of
+        FunctionBegin name p rettype -> "define " ++ typeToLLVMType(rettype) ++ " @" ++ name ++ "(" ++ transRegList(p) ++ ") {\nentry:"
+        FunctionEnd                  -> "}\n"
+        Return t reg                 -> "\tret " ++ typeToLLVMType(t) ++ transRegName(reg)
+        ReturnLit t lit              -> "\tret " ++ typeToLLVMType(t) ++ " " ++ lit
+        ReturnVoid                   -> "\tret void"
+        Alloc t (reg, _)             -> "\t" ++ reg ++ " = alloca " ++ typeToLLVMType(t)
+        StoreLit t v reg             -> "\tstore " ++ typeToLLVMType(t) ++ " " ++ v ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg)
+        Store t reg1 reg2            -> "\tstore " ++ typeToLLVMType(t) ++ transRegName(reg1) ++ ", " ++ typeToLLVMType(t) ++ transRegName(reg2)
+        Load t (reg1, _) reg2        -> "\t" ++ reg1 ++ " = load " ++ typeToLLVMType(t) ++ transRegName(reg2)   -- Load type a b (%a = load type %b)
+        Add op t reg1 reg2 val          -> "\t" ++ transRegName(reg1) ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ val
+        AddRegs op t reg1 reg2 reg3     -> "\t" ++ transRegName(reg1) ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+        AddLit op t (reg, _) val1 val2  -> "\t" ++ reg ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
+        --ICmpNe t reg1 reg2 reg3      -> "\t" ++ transRegName(reg1) ++ " = icmp ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+        IfCmp op t reg1 reg2 reg3    -> do
+            case op of
+                NE  -> "\t" ++ transRegName(reg1) ++ " = icmp ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                EQU  -> "\t" ++ transRegName(reg1) ++ " = icmp eq " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                GTH  -> "\t" ++ transRegName(reg1) ++ " = icmp sgt " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                LTH  -> "\t" ++ transRegName(reg1) ++ " = icmp slt " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                GE  -> "\t" ++ transRegName(reg1) ++ " = icmp sge " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                LE  -> "\t" ++ transRegName(reg1) ++ " = icmp sle " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+
+        BrCond (reg,_) lab_t lab_f   -> "\t" ++ "br i1 " ++ reg ++ ", label %" ++ lab_t ++ ", label %" ++ lab_f
+        BrUnCond label               -> "\t" ++ "br label %" ++ label
+        Label lbl instr              -> lbl ++ ": " ++ transLLVMInstr(instr)
+        FuncCall (Ident n) t rs out_r  -> "\t" ++ transRegName(out_r) ++ " = call " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
+        --Add Type String String String -- Add type to_reg from_reg value
+        otherwise -> fail $ "Trying to translate unknown instruction!"
 	where
 		-- translate a parameter list in a function
 		{-transParlist :: [(Register, Type)] -> String
