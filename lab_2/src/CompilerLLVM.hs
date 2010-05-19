@@ -46,6 +46,7 @@ data LLVMInstruction =
 	| IfCmp RelOp Type Register Register Register
 	| BrCond Register String String
 	| BrUnCond String
+    | Negation Type Register Register -- Negation trgt_reg src_reg
 	| FuncCall Ident Type [(Register, Type)] Register -- reg = call rettype @name(i32 %t0) 
 	deriving (Show)
 --Add typ inc_reg tmp_reg "1"
@@ -177,55 +178,72 @@ compile n p = (evalStateT . unCPM) (compileTree p) $ emptyEnv n
 -- compile expressions
 compileExp :: Expr -> CP (Maybe Register, Type)
 compileExp expr = do
-	case expr of
-		EVar name -> do
-			(reg, typ) <- getVar name
-			case reg of
-				(r, True) -> do
-					t_reg <- newRegister (Ident "tmp") False
-					putInstruction $ Load typ t_reg reg
-					return (Just t_reg, typ)
-				(r, False) -> return (Just reg, typ)
-
-		ELitInt i -> do
-			t_reg <- newRegister (Ident "tmp") False
-			putInstruction $ AddLit Plus Int t_reg "0" (show i)
-			return (Just t_reg, Int)
-		ELitDoub d -> do
-			t_reg <- newRegister (Ident "tmp") False
-			putInstruction $ AddLit Plus Doub t_reg "0.0" (show d)
-			return (Just t_reg, Doub)
-		ELitTrue -> do
-			t_reg <- newRegister (Ident "tmp") False
-			putInstruction $ AddLit Plus Bool t_reg "0" "1"
-			return (Just t_reg, Bool)
-		ELitFalse -> do
-			t_reg <- newRegister (Ident "tmp") False
-			putInstruction $ AddLit Plus Bool t_reg "0" "0"
-			return (Just t_reg, Bool)
-		EAdd e0 op e1 -> do
-			(Just reg0, t) <- compileExp e0
-			(Just reg1, _) <- compileExp e1
-			t_reg <- newRegister (Ident "tmp") False
-			putInstruction $ AddRegs op t t_reg reg0 reg1
-			return (Just t_reg, t)
-			
-		EApp ident@(Ident n) expList -> do
-			regs <- mapM compileExp expList
-			let regs' = tidyRegs regs
-			method_sig@(mlinktyp, (_, ret_t)) <- lookFun ident
-			case mlinktyp of
-				Internal _ -> do
-					t_reg <- newRegister (Ident "tmp") False
-					putInstruction $ FuncCall ident ret_t regs' t_reg
-					return (Just t_reg, ret_t)
-				otherwise  -> fail $ "Unknown function call!"
-		ERel e0 op e1 -> do
-			(Just reg0, t) <- compileExp e0
-			(Just reg1, _) <- compileExp e1
-			t_reg <- newRegister (Ident "tmp") False
-			
-			return (Just t_reg, t)
+    case expr of
+        EVar name -> do
+            (reg, typ) <- getVar name
+            case reg of
+                (r, True) -> do
+                    t_reg <- newRegister (Ident "tmp") False
+                    putInstruction $ Load typ t_reg reg
+                    return (Just t_reg, typ)
+                (r, False) -> return (Just reg, typ)
+        
+        ELitInt i -> do
+            t_reg <- newRegister (Ident "tmp") False
+            putInstruction $ AddLit Plus Int t_reg "0" (show i)
+            return (Just t_reg, Int)
+        ELitDoub d -> do
+            t_reg <- newRegister (Ident "tmp") False
+            putInstruction $ AddLit Plus Doub t_reg "0.0" (show d)
+            return (Just t_reg, Doub)
+        ELitTrue -> do
+            t_reg <- newRegister (Ident "tmp") False
+            putInstruction $ AddLit Plus Bool t_reg "0" "1"
+            return (Just t_reg, Bool)
+        ELitFalse -> do
+            t_reg <- newRegister (Ident "tmp") False
+            putInstruction $ AddLit Plus Bool t_reg "0" "0"
+            return (Just t_reg, Bool)
+        EAdd e0 op e1 -> do
+            (Just reg0, t) <- compileExp e0
+            (Just reg1, _) <- compileExp e1
+            t_reg <- newRegister (Ident "tmp") False
+            putInstruction $ AddRegs op t t_reg reg0 reg1
+            return (Just t_reg, t)
+            
+        EApp ident@(Ident n) expList -> do
+            regs <- mapM compileExp expList
+            let regs' = tidyRegs regs
+            method_sig@(mlinktyp, (_, ret_t)) <- lookFun ident
+            case mlinktyp of
+                Internal _ -> do
+                    t_reg <- newRegister (Ident "tmp") False
+                    putInstruction $ FuncCall ident ret_t regs' t_reg
+                    return (Just t_reg, ret_t)
+                otherwise  -> fail $ "Unknown function call!"
+        ERel e0 op e1 -> do
+            (Just reg0, t) <- compileExp e0
+            (Just reg1, _) <- compileExp e1
+            t_reg <- newRegister (Ident "tmp") False
+            
+            return (Just t_reg, t)
+        Not expr		-> do
+            (Just reg, t) <- compileExp expr
+        
+            t_reg <- newRegister (Ident "tmp") False
+            putInstruction $ Negation t t_reg reg
+            return (Just t_reg,t)
+        Neg expr		-> do
+            (Just reg,t) <- compileExp expr
+            t_reg <- newRegister (Ident "tmp") False
+            lit_reg <- newRegister (Ident "tmp") False
+            --putInstruction $ Mul t t_reg reg lit_reg
+            
+            return (Just t_reg,t)
+            
+        otherwise -> do
+            fail $ show expr
+            
 	where
 		tidyRegs :: [(Maybe Register, Type)] -> [(Register, Type)]
 		tidyRegs [] = []
@@ -757,6 +775,7 @@ transLLVMInstr instr = do
         BrUnCond label               -> "\t" ++ "br label %" ++ label
         Label lbl instr              -> lbl ++ ": " ++ transLLVMInstr(instr)
         FuncCall (Ident n) t rs out_r  -> "\t" ++ transRegName(out_r) ++ " = call " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
+        Negation t reg1 reg2           -> "\t" ++ transRegName(reg1) ++ " = xor " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", 1"
         --Add Type String String String -- Add type to_reg from_reg value
         otherwise -> fail $ "Trying to translate unknown instruction!"
 	where
