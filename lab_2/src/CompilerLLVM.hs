@@ -218,40 +218,20 @@ compileExp expr = do
             regs <- mapM compileExp expList
             let regs' = tidyRegs regs
             method_sig@(mlinktyp, (_, ret_t)) <- lookFun ident
-            case mlinktyp of
+            t_reg <- newRegister (Ident "tmp") False
+            putInstruction $ FuncCall ident ret_t regs' t_reg
+            return (Just t_reg, ret_t)
+            {-case mlinktyp of
                 Internal _ -> do
                     t_reg <- newRegister (Ident "tmp") False
                     putInstruction $ FuncCall ident ret_t regs' t_reg
                     return (Just t_reg, ret_t)
                 otherwise  -> fail $ "Unknown function call!"
+                -}
         ERel e0 op e1 -> do
             (Just reg0, t) <- compileExp e0
             (Just reg1, _) <- compileExp e1
             t_reg <- newRegister (Ident "tmp") False
-            
-            --true_label_id <- getLabel
-            --false_label_id <- getLabel
-            --end_label_id <- getLabel
-            --let true_label = "lab" ++ (show true_label_id)
-            --let false_label = "lab" ++ (show false_label_id)
-            --let end_label = "lab" ++ (show end_label_id)
-            
-            --tobool_reg <- newRegister (Ident "tobool") False
-            
-            --putInstruction $ BrUnCond loop_label
-            --putInstruction $ Label loop_label Nop
-            
-            -- need to load the value of the expressions
-            {-putInstruction $ IfCmp op t tobool_reg reg0 reg1
-            putInstruction $ BrCond tobool_reg true_label false_label
-            
-            putInstruction $ Label true_label (AddLit Plus Bool t_reg "0" "1")
-            putInstruction $ BrUnCond end_label
-            
-            putInstruction $ Label false_label (AddLit Plus Bool t_reg "0" "0")
-            putInstruction $ BrUnCond end_label
-            
-            putInstruction $ Label end_label Nop-}
             
             putInstruction $ IfCmp op t t_reg reg0 reg1
             
@@ -623,17 +603,18 @@ compileStm (SType typ stm) = do
             let loop_label = "lab" ++ (show loop_label_id)
             let then_label = "lab" ++ (show then_label_id)
             
+            tmp_val_reg <- newRegister (Ident "tmp") False
+            tobool_reg <- newRegister (Ident "tobool") False
+            
+            --  Load Type Register Register -- Load type a b (%a = load type %b)
+            putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
+            putInstruction $ BrUnCond loop_label
+            putInstruction $ Label loop_label Nop
+            
             (val,typ) <- compileExp expr
             
             case val of
                 Just reg -> do
-                    tmp_val_reg <- newRegister (Ident "tmp") False
-                    tobool_reg <- newRegister (Ident "tobool") False
-                    
-                    --  Load Type Register Register -- Load type a b (%a = load type %b)
-                    putInstruction $ AddLit Plus Bool tmp_val_reg "0" "1"
-                    putInstruction $ BrUnCond loop_label
-                    putInstruction $ Label loop_label Nop
 
                     -- putInstruction $ Load typ
                     -- need to load the value of the expressions
@@ -857,7 +838,10 @@ transLLVMInstr instr = do
         BrCond (reg,_) lab_t lab_f   -> "\t" ++ "br i1 " ++ reg ++ ", label %" ++ lab_t ++ ", label %" ++ lab_f
         BrUnCond label               -> "\t" ++ "br label %" ++ label
         Label lbl instr              -> lbl ++ ": " ++ transLLVMInstr(instr)
-        FuncCall (Ident n) t rs out_r  -> "\t" ++ transRegName(out_r) ++ " = call " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
+        FuncCall (Ident n) t rs out_r  -> do
+            case t of
+                Void      -> "\tcall " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
+                otherwise -> "\t" ++ transRegName(out_r) ++ " = call " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
         Negation t reg1 reg2           -> "\t" ++ transRegName(reg1) ++ " = xor " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", 1"
         Mul t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = mul " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
         Modulus t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = srem " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
