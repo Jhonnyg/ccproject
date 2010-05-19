@@ -47,7 +47,10 @@ data LLVMInstruction =
 	| BrCond Register String String
 	| BrUnCond String
     | Negation Type Register Register -- Negation trgt_reg src_reg
-	| FuncCall Ident Type [(Register, Type)] Register -- reg = call rettype @name(i32 %t0) 
+	| FuncCall Ident Type [(Register, Type)] Register -- reg = call rettype @name(i32 %t0)
+    | Mul Type Register Register Register
+    | Modulus Type Register Register Register
+    | Division Type Register Register Register
 	deriving (Show)
 --Add typ inc_reg tmp_reg "1"
 
@@ -237,8 +240,19 @@ compileExp expr = do
             (Just reg,t) <- compileExp expr
             t_reg <- newRegister (Ident "tmp") False
             lit_reg <- newRegister (Ident "tmp") False
-            --putInstruction $ Mul t t_reg reg lit_reg
+            putInstruction $ AddLit Plus Int lit_reg "0" "-1"
+            putInstruction $ Mul t t_reg reg lit_reg  
             
+            return (Just t_reg,t)
+        EMul e0 op e1		-> do
+            (Just reg0,t) <- compileExp e0
+            (Just reg1,_) <- compileExp e1
+            
+            t_reg <- newRegister (Ident "tmp") False
+            case op of
+                Times -> putInstruction $ Mul t t_reg reg0 reg1
+                Div -> putInstruction $ Division t t_reg reg0 reg1
+                Mod -> putInstruction $ Modulus t t_reg reg0 reg1
             return (Just t_reg,t)
             
         otherwise -> do
@@ -776,6 +790,9 @@ transLLVMInstr instr = do
         Label lbl instr              -> lbl ++ ": " ++ transLLVMInstr(instr)
         FuncCall (Ident n) t rs out_r  -> "\t" ++ transRegName(out_r) ++ " = call " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
         Negation t reg1 reg2           -> "\t" ++ transRegName(reg1) ++ " = xor " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", 1"
+        Mul t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = mul " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+        Modulus t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = srem " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+        Division t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = sdiv " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
         --Add Type String String String -- Add type to_reg from_reg value
         otherwise -> fail $ "Trying to translate unknown instruction!"
 	where
