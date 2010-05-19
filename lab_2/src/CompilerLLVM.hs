@@ -229,7 +229,33 @@ compileExp expr = do
             (Just reg1, _) <- compileExp e1
             t_reg <- newRegister (Ident "tmp") False
             
-            return (Just t_reg, t)
+            --true_label_id <- getLabel
+            --false_label_id <- getLabel
+            --end_label_id <- getLabel
+            --let true_label = "lab" ++ (show true_label_id)
+            --let false_label = "lab" ++ (show false_label_id)
+            --let end_label = "lab" ++ (show end_label_id)
+            
+            --tobool_reg <- newRegister (Ident "tobool") False
+            
+            --putInstruction $ BrUnCond loop_label
+            --putInstruction $ Label loop_label Nop
+            
+            -- need to load the value of the expressions
+            {-putInstruction $ IfCmp op t tobool_reg reg0 reg1
+            putInstruction $ BrCond tobool_reg true_label false_label
+            
+            putInstruction $ Label true_label (AddLit Plus Bool t_reg "0" "1")
+            putInstruction $ BrUnCond end_label
+            
+            putInstruction $ Label false_label (AddLit Plus Bool t_reg "0" "0")
+            putInstruction $ BrUnCond end_label
+            
+            putInstruction $ Label end_label Nop-}
+            
+            putInstruction $ IfCmp op t t_reg reg0 reg1
+            
+            return (Just t_reg, Bool)
         Not expr		-> do
             (Just reg, t) <- compileExp expr
         
@@ -562,7 +588,7 @@ compileStm (SType typ stm) = do
                     tobool_reg <- newRegister (Ident "tobool") False
                     
                     --  Load Type Register Register -- Load type a b (%a = load type %b)
-                    putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
+                    putInstruction $ AddLit Plus Bool tmp_val_reg "0" "1"
                     putInstruction $ BrUnCond loop_label
                     putInstruction $ Label loop_label Nop
 
@@ -757,7 +783,7 @@ lookFun fName = do
 typeToLLVMType :: Type -> String
 typeToLLVMType Int = "i32"
 typeToLLVMType Doub = "double"
-typeToLLVMType Bool = "i2"
+typeToLLVMType Bool = "i1"
 typeToLLVMType Void = "void"
 
 transLLVMInstr :: LLVMInstruction -> String
