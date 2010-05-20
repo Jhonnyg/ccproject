@@ -275,7 +275,6 @@ compileExp expr = do
             return (Just t_reg,t)
         EAnd e0 e1		-> do
             (Just reg0,t) <- compileExp e0
-            (Just reg1,_) <- compileExp e1
             
             -- labels
             true_label_id <- getLabel
@@ -296,6 +295,7 @@ compileExp expr = do
             
             -- first expression is true, store result of second expression
             putInstruction $ Label true_label Nop
+            (Just reg1,_) <- compileExp e1
             putInstruction $ Store Bool reg1 ret_reg_ptr
             putInstruction $ BrUnCond out_label
             
@@ -312,7 +312,6 @@ compileExp expr = do
             
         EOr e0 e1 -> do
             (Just reg0,t) <- compileExp e0
-            (Just reg1,_) <- compileExp e1
             
             -- labels
             true_label_id <- getLabel
@@ -338,6 +337,7 @@ compileExp expr = do
             
             -- first expression is false, store result of second expression (we need to know the second one)
             putInstruction $ Label false_label Nop
+            (Just reg1,_) <- compileExp e1
             putInstruction $ Store Bool reg1 ret_reg_ptr
             putInstruction $ BrUnCond out_label
             
@@ -604,12 +604,12 @@ transLLVMInstr instr = do
     
         IfCmp op t@(Doub) reg1 reg2 reg3    -> do
             case op of
-                NE  -> "\t" ++ transRegName(reg1) ++ " = fcmp ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                EQU  -> "\t" ++ transRegName(reg1) ++ " = fcmp eq " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                GTH  -> "\t" ++ transRegName(reg1) ++ " = fcmp sgt " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                LTH  -> "\t" ++ transRegName(reg1) ++ " = fcmp slt " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                GE  -> "\t" ++ transRegName(reg1) ++ " = fcmp sge " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                LE  -> "\t" ++ transRegName(reg1) ++ " = fcmp sle " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                NE  -> "\t" ++ transRegName(reg1) ++ " = fcmp une " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                EQU  -> "\t" ++ transRegName(reg1) ++ " = fcmp ueq " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                GTH  -> "\t" ++ transRegName(reg1) ++ " = fcmp ugt " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                LTH  -> "\t" ++ transRegName(reg1) ++ " = fcmp ult " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                GE  -> "\t" ++ transRegName(reg1) ++ " = fcmp uge " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                LE  -> "\t" ++ transRegName(reg1) ++ " = fcmp ule " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
             
         IfCmp op t reg1 reg2 reg3    -> do
             case op of
