@@ -233,7 +233,7 @@ compileExp expr = do
             let const_name = "@.str" ++ (show string_num)
             let string_constant = const_name ++ " = private constant [" ++ (show $ length(str')) ++ " x i8] c\"" ++ str' ++ "\""
             
-            modify (\e -> e { next_string_num = string_num, string_constants = string_constant:const_strings } )
+            modify (\e -> e { next_string_num = string_num + 1, string_constants = string_constant:const_strings } )
             
             -- push instruction
             putInstruction $ FuncCallString str' const_name
@@ -456,13 +456,26 @@ compileStm (SType typ stm) = do
             putInstruction $ BrCond tobool_reg then_label else_label
             putInstruction $ Label then_label Nop
             compileStm ifs
-            putInstruction $ BrUnCond end_label
+            code_stack <- gets codeStack
+            let last_stm = last code_stack
+            case last_stm of
+                Return _ _ -> putInstruction Nop
+                ReturnVoid -> putInstruction Nop
+                ReturnLit _ _ -> putInstruction Nop
+                otherwise -> putInstruction $ BrUnCond end_label
             
             putInstruction $ Label else_label Nop
             compileStm els
             
-            putInstruction $ BrUnCond end_label
-            putInstruction $ Label end_label Nop
+            
+            
+            case last_stm of
+                Return _ _ -> putInstruction Nop
+                ReturnVoid -> putInstruction Nop
+                ReturnLit _ _ -> putInstruction Nop
+                otherwise -> do
+                    putInstruction $ BrUnCond end_label
+                    putInstruction $ Label end_label Nop
 
         While expr stmt		-> do
             -- labels
