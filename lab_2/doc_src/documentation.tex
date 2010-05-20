@@ -50,11 +50,11 @@
 \else
 \usepackage{graphicx}
 \fi
-\title{JLC - A Javalette Compiler}
+\title{LLVM - A Javalette Compiler}
 \author{Sven Andersson\\19860708-4632 -- andsve@student.chalmers.se
         \and Jhonny Göransson\\19840611-8235 -- jhonny@student.chalmers.se}
 
-\date{2010-04-16}
+\date{2010-05-20}
 
 \begin{document}
 
@@ -85,16 +85,18 @@
 
   \subsection*{Usage}
     \texttt{\$ ./jlc \textit{filename.jl}}\\
-    Will generate \texttt{filename.j} (Jasmin file) and \texttt{filename.class} (Java Class file).
+    Will generate \texttt{filename.ll} (LLVM instruction file) and then translate this file into LLVM bitcode and output this to \texttt{./a.out}
   
   \subsection*{How it works}
     The compiler executes in the following 4 steps:
     \begin{enumerate}
-      \item \textbf{Lexer} -- Generates a code tree from the source file.
+      \item \textbf{Lexer} -- Generates an abstract syntax tree from the source file.
       \item \textbf{Typechecker} -- Checks the code tree for type errors.
-      \item \textbf{(Jasmin) Compiler} -- Generates a \texttt{.j} file with Jasmin\footnote{http://jasmin.sourceforge.net/} instructions
-      \item \textbf{Java Class generation} -- The compiler automatically runs the Jasmin binary (\texttt{jasmin.jar}) located in the subdirectory \texttt{lib}, which generates a Java Class file from the \texttt{.j} file.
+      \item \textbf{(LLVM) Compiler} -- Generates a \texttt{.ll} file with LLVM\footnote{http://llvm.org/} instructions
+      \item \textbf{LLVM Bitcode Generation} -- Writes and translates the instructions to LLVM-bitcode
     \end{enumerate}
+  \subsection*{Extensions Implemented}
+    None.
 
 \section{BNFC Results}
   We get one shift/reduce conflict from BNFC, which comes from the "dangling" if/if-else rule.
