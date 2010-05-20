@@ -85,7 +85,7 @@
 
   \subsection*{Usage}
     \texttt{\$ ./jlc \textit{filename.jl}}\\
-    Will generate \texttt{filename.ll} (LLVM instruction file) and then translate this file into LLVM bitcode and output this to \texttt{./a.out}
+    Will generate \texttt{filename.ll} (LLVM instruction file) and then translate this file into LLVM bitcode and output this to \texttt{./a.out}. The LLVM bitcode (.bc) must be linked together with the runtime library so that the read/print functions can be used. This is done by executing the llvm command \texttt{llvm-ld filename.bc lib/runtime.bc}. 
   
   \subsection*{How it works}
     The compiler executes in the following 4 steps:
