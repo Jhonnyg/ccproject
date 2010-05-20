@@ -39,15 +39,14 @@ check n s = case pProgram (myLexer s) of
                                                 putStrLn err
                                                 exitFailure
                                         Ok prg    -> do
-                                                --putStrLn "Compile: OK"
-                                                --mapM_ (putStrLn) prg
                                                 let llvm_code = concat $ intersperse "\n" prg
+                                                let output_dir = genOutputDir n
                                                 
-                                                -- write jasmin code
-                                                writeFile (genOutputDir n) llvm_code
+                                                -- write llvm code
+                                                writeFile output_dir llvm_code
                                                                                                 
                                                 -- run llvm-as on output file
-                                                system $ "llvm-as -f " ++ (genOutputDir n)
+                                                system $ "llvm-as -f " ++ output_dir
                                                 
                                                 -- ALRIGHT!
                                                 hPutStr stderr "OK"
