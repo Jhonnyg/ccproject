@@ -355,10 +355,16 @@ compileExp expr = do
 -- compile variable declarations
 compileDecl :: Type -> Item -> CP ()
 compileDecl t (NoInit ident) = do -- variable declaration with NO initialization expression
-	reg_name <- addVar t ident
-	putInstruction $ Alloc t reg_name
-	
+    reg_name <- addVar t ident
+    putInstruction $ Alloc t reg_name
+    case t of
+        Int -> putInstruction $ (StoreLit t "0" reg_name)
+        Doub -> putInstruction $ (StoreLit t "0.0" reg_name)
+        Bool -> putInstruction $ (StoreLit t "0" reg_name)
+
 compileDecl t (Init ident expr) = do -- variable declaration with initialization expression
+  (Just reg_from, t') <- compileExp expr
+  
   reg_name <- addVar t ident
   putInstruction $ Alloc t reg_name
   case expr of
@@ -366,9 +372,7 @@ compileDecl t (Init ident expr) = do -- variable declaration with initialization
     ELitDoub i -> putInstruction $ (StoreLit t (show i) reg_name)
     ELitTrue   -> putInstruction $ (StoreLit t "1" reg_name)
     ELitFalse  -> putInstruction $ (StoreLit t "0" reg_name)
-    otherwise  -> do
-        (Just reg_from, t') <- compileExp expr
-        putInstruction $ (Store t reg_from reg_name)
+    otherwise  -> putInstruction $ (Store t reg_from reg_name)
 
 -- compile statements
 compileStm :: Stmt -> CP ()
