@@ -343,45 +343,6 @@ compileExp expr = do
 		tidyRegs :: [(Maybe Register, Type)] -> [(Register, Type)]
 		tidyRegs [] = []
 		tidyRegs ((Just r, t):rs) = (r, t):tidyRegs(rs)
-{-
-		EAnd e0 e1		-> do
-			label_id1 <- getLabel
-			label_id2 <- getLabel
-			let label_1 = "lab" ++ (show label_id1)
-			let label_2 = "lab" ++ (show label_id2)
-			
-			t <- compileExp e0
-			putInstruction $ IfEq label_1
-			putInstruction $ PushInt 1
-			compileExp e1
-			putInstruction $ And
-			putInstruction $ Goto label_2
-			putInstruction $ Label label_1
-			putInstruction $ PushInt 0
-			putInstruction $ Label label_2
-			
-			decrStack
-			return t
-			
-		EOr e0 e1		-> do
-			label_id1 <- getLabel
-			label_id2 <- getLabel
-			let label_1 = "lab" ++ (show label_id1)
-			let label_2 = "lab" ++ (show label_id2)
-			
-			t <- compileExp e0
-			putInstruction $ IfNe label_1
-			putInstruction $ PushInt 0
-			compileExp e1
-			putInstruction $ Or
-			putInstruction $ Goto label_2
-			putInstruction $ Label label_1
-			putInstruction $ PushInt 1
-			putInstruction $ Label label_2
-			
-			decrStack
-			return t
--}
 
 -- compile variable declarations
 compileDecl :: Type -> Item -> CP ()
@@ -423,10 +384,8 @@ compileStm (SType typ stm) = do
         Ret (ELitFalse)   -> putInstruction $ (ReturnLit Bool "0")
         Ret (ELitDoub i)  -> putInstruction $ (ReturnLit Doub (show i))
         Ret expr          -> do
-            (val,typ) <- compileExp expr
-            case val of
-                Just reg_val -> putInstruction $ Return typ reg_val 
-                Nothing -> fail $ "Return statement failed"
+            (Just reg_val,typ) <- compileExp expr
+            putInstruction $ Return typ reg_val 
         
         VRet             -> putInstruction $ ReturnVoid
         
@@ -448,32 +407,29 @@ compileStm (SType typ stm) = do
             putInstruction $ Store typ inc_reg reg
                               
         Ass name expr     -> do
-            (val,exp_typ) <- compileExp expr
+            (Just reg_val,exp_typ) <- compileExp expr
             (reg,var_typ) <- getVar name
+            putInstruction $ Store var_typ reg_val reg
             
-            case val of
-                Just reg_val -> putInstruction $ Store var_typ reg_val reg    -- store tmp val to reg
-                Nothing      -> fail "yep!"
         Cond expr stmt		-> do
             end_label_id <- getLabel
             then_label_id <- getLabel
             let end_label = "lab" ++ (show end_label_id)
             let then_label = "lab" ++ (show then_label_id)
-            (val,typ) <- compileExp expr
-            case val of
-                Just reg@(name,ptr)    -> do
-                    tmp_val_reg <- newRegister (Ident "tmp") False
-                    tobool_reg <- newRegister (Ident "tobool") False
-                    if typ == Doub
-                        then putInstruction $ AddLit Plus Doub tmp_val_reg "0.0" "0.0"
-                        else putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
-                    putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
-                    putInstruction $ BrCond tobool_reg then_label end_label
-                    putInstruction $ Label then_label Nop
-                    compileStm stmt                    
-                    putInstruction $ BrUnCond end_label
-                    putInstruction $ Label end_label Nop
-                Nothing     -> fail $ "if fail" 
+            (Just reg@(name,ptr),typ) <- compileExp expr
+            
+            tmp_val_reg <- newRegister (Ident "tmp") False
+            tobool_reg <- newRegister (Ident "tmp") False
+            if typ == Doub
+                then putInstruction $ AddLit Plus Doub tmp_val_reg "0.0" "0.0"
+                else putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
+            putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
+            putInstruction $ BrCond tobool_reg then_label end_label
+            putInstruction $ Label then_label Nop
+            compileStm stmt                    
+            putInstruction $ BrUnCond end_label
+            putInstruction $ Label end_label Nop
+
         CondElse  expr ifs els  -> do
             end_label_id <- getLabel
             then_label_id <- getLabel
@@ -481,25 +437,25 @@ compileStm (SType typ stm) = do
             let end_label = "lab" ++ (show end_label_id)
             let then_label = "lab" ++ (show then_label_id)
             let else_label = "lab" ++ (show else_label_id)
-            (val,typ) <- compileExp expr
-            case val of
-                Just reg@(_,ptr)    -> do
-                    tmp_val_reg <- newRegister (Ident "tmp") False
-                    tobool_reg <- newRegister (Ident "tobool") False
-                    putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
-                    putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
-                    putInstruction $ BrCond tobool_reg then_label else_label
-                    putInstruction $ Label then_label Nop
-                    compileStm ifs
-                    putInstruction $ BrUnCond end_label
-                    
-                    putInstruction $ Label else_label Nop
-                    compileStm els
-                    
-                    putInstruction $ BrUnCond end_label
-                    putInstruction $ Label end_label Nop
-                Nothing     -> fail $ "if-else fail"
+            (Just reg@(_,ptr),typ) <- compileExp expr
+            
+            tmp_val_reg <- newRegister (Ident "tmp") False
+            tobool_reg <- newRegister (Ident "tobool") False
+            putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
+            putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
+            putInstruction $ BrCond tobool_reg then_label else_label
+            putInstruction $ Label then_label Nop
+            compileStm ifs
+            putInstruction $ BrUnCond end_label
+            
+            putInstruction $ Label else_label Nop
+            compileStm els
+            
+            putInstruction $ BrUnCond end_label
+            putInstruction $ Label end_label Nop
+
         While expr stmt		-> do
+            -- labels
             end_label_id <- getLabel
             loop_label_id <- getLabel
             then_label_id <- getLabel
@@ -510,87 +466,26 @@ compileStm (SType typ stm) = do
             tmp_val_reg <- newRegister (Ident "tmp") False
             tobool_reg <- newRegister (Ident "tobool") False
             
-            --  Load Type Register Register -- Load type a b (%a = load type %b)
             putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
             putInstruction $ BrUnCond loop_label
             putInstruction $ Label loop_label Nop
             
-            (val,typ) <- compileExp expr
-            
-            case val of
-                Just reg -> do
+            (Just reg,typ) <- compileExp expr
 
-                    -- putInstruction $ Load typ
-                    -- need to load the value of the expressions
-                    putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg
-                    putInstruction $ BrCond tobool_reg then_label end_label
-                    putInstruction $ Label then_label Nop
-                    compileStm stmt
+            putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg
+            putInstruction $ BrCond tobool_reg then_label end_label
+            putInstruction $ Label then_label Nop
+            compileStm stmt
+            
+            putInstruction $ BrUnCond loop_label
+            
+            putInstruction $ Label end_label Nop
                     
-                    putInstruction $ BrUnCond loop_label
-                    
-                    putInstruction $ Label end_label Nop
-                    
-                Nothing -> fail $ "while-stm fail"
             
         SExp exprs		-> do
             compileExp exprs
             return ()
         unknown -> fail $ "Trying to compile an unknown statement! " ++ (show stm)
-    {- do		   
-		Cond expr stmt		-> do
-			new_label_id <- getLabel
-			let new_label = "lab" ++ (show new_label_id)
-			
-			-- compare expression
-			compileExp expr
-			
-			case expr of
-				ELitTrue -> compileStm stmt
-				otherwise -> do
-					putInstruction $ IfEq new_label
-					compileStm stmt
-					putInstruction $ Label new_label
-			
-		   
-		CondElse  expr ifs els  -> do
-			label_else_id <- getLabel
-			label_end_id <- getLabel
-			let label_else = "lab" ++ (show label_else_id)
-			let label_end = "lab" ++ (show label_end_id)
-			
-			-- compile expression
-			compileExp expr
-			
-			decrStack
-			putInstruction $ IfEq label_else
-			compileStm ifs
-			code_stack <- gets codeStack
-			let last_stm = last code_stack
-			
-			case last_stm of
-				Return _ -> putInstruction Nop
-				otherwise -> putInstruction $ Goto label_end
-			putInstruction $ Label label_else
-			compileStm els
-			
-			case last_stm of
-				Return _ -> putInstruction Nop
-				otherwise -> putInstruction $ Label label_end
-		 
-		While expr stmt		-> do
-			label_id_1 <- getLabel
-			label_id_2 <- getLabel
-			let label_1 = "lab" ++ (show label_id_1)
-			let label_2 = "lab" ++ (show label_id_2)
-
-			putInstruction $ Goto label_2
-			putInstruction $ Label label_1
-			compileStm stmt
-			putInstruction $ Label label_2
-			compileExp expr	
-			putInstruction $ IfNe label_1
--}
 
 -- iterate all the statements in a function definition and compile them
 compileDef :: TopDef -> CP ()
@@ -679,8 +574,7 @@ transLLVMInstr instr = do
         AddRegs op t reg1 reg2 reg3     -> "\t" ++ transRegName(reg1) ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
         AddLit op t@Doub (reg, _) val1 val2  -> "\t" ++ reg ++ " = " ++ transAddOpD(op) ++ " " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
         AddLit op t (reg, _) val1 val2  -> "\t" ++ reg ++ " = " ++ transAddOp(op) ++ " " ++ typeToLLVMType(t) ++ " " ++ val1 ++ ", " ++ val2
-        
-        --ICmpNe t reg1 reg2 reg3      -> "\t" ++ transRegName(reg1) ++ " = icmp ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+    
         IfCmp op t@(Doub) reg1 reg2 reg3    -> do
             case op of
                 NE  -> "\t" ++ transRegName(reg1) ++ " = fcmp ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
