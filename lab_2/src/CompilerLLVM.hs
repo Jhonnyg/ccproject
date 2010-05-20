@@ -520,6 +520,10 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	
 	putInstruction $ FunctionBegin name params retType
 	mapM_ (compileStm) stms
+	
+	code_stack' <- gets codeStack
+	when (length(code_stack') == 1) $ putInstruction $ ReturnVoid
+	
 	putInstruction $ FunctionEnd
 	
 	code_stack <- gets codeStack
@@ -627,7 +631,10 @@ transLLVMInstr instr = do
         Negation t reg1 reg2           -> "\t" ++ transRegName(reg1) ++ " = xor " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", 1"
         Mul t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = mul " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
         Modulus t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = srem " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-        Division t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = sdiv " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+        Division t reg1 reg2 reg3 -> do
+            case t of
+                Doub -> "\t" ++ transRegName(reg1) ++ " = fdiv " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                otherwise -> "\t" ++ transRegName(reg1) ++ " = sdiv " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
         --Add Type String String String -- Add type to_reg from_reg value
         otherwise -> fail $ "Trying to translate unknown instruction!"
 	where
