@@ -233,7 +233,7 @@ compileExp expr = do
             let const_name = "@.str" ++ (show string_num)
             let string_constant = const_name ++ " = private constant [" ++ (show $ length(str')) ++ " x i8] c\"" ++ str' ++ "\""
             
-            modify (\e -> e { next_string_num = string_num, string_constants = string_constant:const_strings } )
+            modify (\e -> e { next_string_num = string_num + 1, string_constants = string_constant:const_strings } )
             
             -- push instruction
             putInstruction $ FuncCallString str' const_name
@@ -275,7 +275,6 @@ compileExp expr = do
             return (Just t_reg,t)
         EAnd e0 e1		-> do
             (Just reg0,t) <- compileExp e0
-            (Just reg1,_) <- compileExp e1
             
             -- labels
             true_label_id <- getLabel
@@ -296,6 +295,7 @@ compileExp expr = do
             
             -- first expression is true, store result of second expression
             putInstruction $ Label true_label Nop
+            (Just reg1,_) <- compileExp e1
             putInstruction $ Store Bool reg1 ret_reg_ptr
             putInstruction $ BrUnCond out_label
             
@@ -312,7 +312,6 @@ compileExp expr = do
             
         EOr e0 e1 -> do
             (Just reg0,t) <- compileExp e0
-            (Just reg1,_) <- compileExp e1
             
             -- labels
             true_label_id <- getLabel
@@ -338,6 +337,7 @@ compileExp expr = do
             
             -- first expression is false, store result of second expression (we need to know the second one)
             putInstruction $ Label false_label Nop
+            (Just reg1,_) <- compileExp e1
             putInstruction $ Store Bool reg1 ret_reg_ptr
             putInstruction $ BrUnCond out_label
             
@@ -355,10 +355,16 @@ compileExp expr = do
 -- compile variable declarations
 compileDecl :: Type -> Item -> CP ()
 compileDecl t (NoInit ident) = do -- variable declaration with NO initialization expression
-	reg_name <- addVar t ident
-	putInstruction $ Alloc t reg_name
-	
+    reg_name <- addVar t ident
+    putInstruction $ Alloc t reg_name
+    case t of
+        Int -> putInstruction $ (StoreLit t "0" reg_name)
+        Doub -> putInstruction $ (StoreLit t "0.0" reg_name)
+        Bool -> putInstruction $ (StoreLit t "0" reg_name)
+
 compileDecl t (Init ident expr) = do -- variable declaration with initialization expression
+  (Just reg_from, t') <- compileExp expr
+  
   reg_name <- addVar t ident
   putInstruction $ Alloc t reg_name
   case expr of
@@ -366,9 +372,7 @@ compileDecl t (Init ident expr) = do -- variable declaration with initialization
     ELitDoub i -> putInstruction $ (StoreLit t (show i) reg_name)
     ELitTrue   -> putInstruction $ (StoreLit t "1" reg_name)
     ELitFalse  -> putInstruction $ (StoreLit t "0" reg_name)
-    otherwise  -> do
-        (Just reg_from, t') <- compileExp expr
-        putInstruction $ (Store t reg_from reg_name)
+    otherwise  -> putInstruction $ (Store t reg_from reg_name)
 
 -- compile statements
 compileStm :: Stmt -> CP ()
@@ -456,13 +460,26 @@ compileStm (SType typ stm) = do
             putInstruction $ BrCond tobool_reg then_label else_label
             putInstruction $ Label then_label Nop
             compileStm ifs
-            putInstruction $ BrUnCond end_label
+            code_stack <- gets codeStack
+            let last_stm = last code_stack
+            case last_stm of
+                Return _ _ -> putInstruction Nop
+                ReturnVoid -> putInstruction Nop
+                ReturnLit _ _ -> putInstruction Nop
+                otherwise -> putInstruction $ BrUnCond end_label
             
             putInstruction $ Label else_label Nop
             compileStm els
             
-            putInstruction $ BrUnCond end_label
-            putInstruction $ Label end_label Nop
+            
+            
+            case last_stm of
+                Return _ _ -> putInstruction Nop
+                ReturnVoid -> putInstruction Nop
+                ReturnLit _ _ -> putInstruction Nop
+                otherwise -> do
+                    putInstruction $ BrUnCond end_label
+                    putInstruction $ Label end_label Nop
 
         While expr stmt		-> do
             -- labels
@@ -507,6 +524,10 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 	
 	putInstruction $ FunctionBegin name params retType
 	mapM_ (compileStm) stms
+	
+	code_stack' <- gets codeStack
+	when (length(code_stack') == 1) $ putInstruction $ ReturnVoid
+	
 	putInstruction $ FunctionEnd
 	
 	code_stack <- gets codeStack
@@ -587,12 +608,12 @@ transLLVMInstr instr = do
     
         IfCmp op t@(Doub) reg1 reg2 reg3    -> do
             case op of
-                NE  -> "\t" ++ transRegName(reg1) ++ " = fcmp ne " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                EQU  -> "\t" ++ transRegName(reg1) ++ " = fcmp eq " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                GTH  -> "\t" ++ transRegName(reg1) ++ " = fcmp sgt " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                LTH  -> "\t" ++ transRegName(reg1) ++ " = fcmp slt " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                GE  -> "\t" ++ transRegName(reg1) ++ " = fcmp sge " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-                LE  -> "\t" ++ transRegName(reg1) ++ " = fcmp sle " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                NE  -> "\t" ++ transRegName(reg1) ++ " = fcmp une " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                EQU  -> "\t" ++ transRegName(reg1) ++ " = fcmp ueq " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                GTH  -> "\t" ++ transRegName(reg1) ++ " = fcmp ugt " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                LTH  -> "\t" ++ transRegName(reg1) ++ " = fcmp ult " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                GE  -> "\t" ++ transRegName(reg1) ++ " = fcmp uge " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                LE  -> "\t" ++ transRegName(reg1) ++ " = fcmp ule " ++ typeToLLVMType(t) ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
             
         IfCmp op t reg1 reg2 reg3    -> do
             case op of
@@ -614,7 +635,10 @@ transLLVMInstr instr = do
         Negation t reg1 reg2           -> "\t" ++ transRegName(reg1) ++ " = xor " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", 1"
         Mul t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = mul " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
         Modulus t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = srem " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-        Division t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = sdiv " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+        Division t reg1 reg2 reg3 -> do
+            case t of
+                Doub -> "\t" ++ transRegName(reg1) ++ " = fdiv " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
+                otherwise -> "\t" ++ transRegName(reg1) ++ " = sdiv " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
         --Add Type String String String -- Add type to_reg from_reg value
         otherwise -> fail $ "Trying to translate unknown instruction!"
 	where
