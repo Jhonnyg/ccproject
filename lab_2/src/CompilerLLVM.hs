@@ -127,7 +127,7 @@ addVarNonPointer t n = do
 	modify (\e -> e { variables = v':vs } )
 	return new_reg
 
--- get local var number and type from variable name
+-- get allocated register and type from variable name
 getVar :: Ident -> CP (Register, Type) -- (regname, type)
 getVar n = do
 	vars <- gets variables
@@ -138,7 +138,7 @@ getVar n = do
 	  rtrn [] = fail $ (show n) ++ " referenced, but not found!"
 	  rtrn (x:xs) = return x
 
--- push a jasmine instruction on the code stack
+-- push a LLVM instruction on the code stack
 putInstruction :: LLVMInstruction -> CP ()
 putInstruction instr = do
 	code_stack <- gets codeStack
@@ -218,13 +218,6 @@ compileExp expr = do
             t_reg <- newRegister (Ident "tmp") False
             putInstruction $ FuncCall ident ret_t regs' t_reg
             return (Just t_reg, ret_t)
-            {-case mlinktyp of
-                Internal _ -> do
-                    t_reg <- newRegister (Ident "tmp") False
-                    putInstruction $ FuncCall ident ret_t regs' t_reg
-                    return (Just t_reg, ret_t)
-                otherwise  -> fail $ "Unknown function call!"
-                -}
         EAppS _ str -> do
             -- add to string constants
             let str' = str ++ "\00"
@@ -234,8 +227,6 @@ compileExp expr = do
             let string_constant = const_name ++ " = private constant [" ++ (show $ length(str')) ++ " x i8] c\"" ++ str' ++ "\""
             
             modify (\e -> e { next_string_num = string_num + 1, string_constants = string_constant:const_strings } )
-            
-            -- push instruction
             putInstruction $ FuncCallString str' const_name
             
             return (Nothing, Void)
@@ -471,8 +462,6 @@ compileStm (SType typ stm) = do
             putInstruction $ Label else_label Nop
             compileStm els
             
-            
-            
             case last_stm of
                 Return _ _ -> putInstruction Nop
                 ReturnVoid -> putInstruction Nop
@@ -539,31 +528,6 @@ compileDef (FnDef retType (Ident name) args (Block stms)) = do
 		registerArgs (Arg t ident) = do
 			reg <- addVarNonPointer t ident
 			return (reg, t)
-{-do
-	clearContexSpec
-	
-	putInstruction (Label "entry")
-	
-	-- add arguments as local vars
-	mapM_ (addArgs) args
-	
-	-- compile each code statement
-	mapM_ (compileStm) stms
-	
-	code_stack' <- gets codeStack
-	when ((length code_stack') == 1) $ putInstruction $ Return Void
-	
-	code_stack <- gets codeStack
-	prog_code <- gets programCode
-	max_stack_depth <- gets maxStackDepth
-	num_locals <- gets nextVarIndex
-	
-	let code_stack' = ((StartMethod name (map (\(Arg t (Ident _)) -> t) args) retType max_stack_depth num_locals) : code_stack) ++ [EndMethod]
-	modify (\e -> e { programCode = prog_code ++ [code_stack'] })
-
-	where
-		addArgs (Arg t i) = addVar t i
--}
 
 -- add a function definition
 addDef :: TopDef -> CP ()
@@ -639,15 +603,8 @@ transLLVMInstr instr = do
             case t of
                 Doub -> "\t" ++ transRegName(reg1) ++ " = fdiv " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
                 otherwise -> "\t" ++ transRegName(reg1) ++ " = sdiv " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
-        --Add Type String String String -- Add type to_reg from_reg value
         otherwise -> fail $ "Trying to translate unknown instruction!"
-	where
-		-- translate a parameter list in a function
-		{-transParlist :: [(Register, Type)] -> String
-		transParlist []   = ""
-		transParlist p@((r, ptr):[]) = typeToLLVMType(t) ++ " %" ++ n
-		transParlist p@((r, ptr):ps) = typeToLLVMType(t) ++ " %" ++ n ++ ", " ++ transParlist(ps)-}
-		
+	where		
 		transRegList :: [(Register, Type)] -> String
 		transRegList []   = ""
 		transRegList (((r, _), t):[]) = typeToLLVMType(t) ++ " " ++ r
