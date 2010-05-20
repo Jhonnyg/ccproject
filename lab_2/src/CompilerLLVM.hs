@@ -48,6 +48,7 @@ data LLVMInstruction =
 	| BrUnCond String
     | Negation Type Register Register -- Negation trgt_reg src_reg
 	| FuncCall Ident Type [(Register, Type)] Register -- reg = call rettype @name(i32 %t0)
+	| FuncCallString String String
     | Mul Type Register Register Register
     | Modulus Type Register Register Register
     | Division Type Register Register Register
@@ -85,6 +86,8 @@ data Env = Env {
 		 signatures :: Map Ident MethodDefinition,
 		 variables :: [Map Ident (Register, Type)],
 		 registers :: Map Ident Int,
+		 string_constants :: [String],
+		 next_string_num :: Integer,
 		 nextVarIndex :: Integer,
 		 nextLabelIndex :: Integer,
 		 codeStack :: [LLVMInstruction],
@@ -162,6 +165,8 @@ emptyEnv name = Env {
                 signatures = Map.fromList stdFuncs,
                 variables = [Map.empty],
                 registers = Map.empty,
+                string_constants = [],
+                next_string_num = 0,
                 nextVarIndex = 0,
                 nextLabelIndex = 0,
                 codeStack = [],
@@ -228,6 +233,20 @@ compileExp expr = do
                     return (Just t_reg, ret_t)
                 otherwise  -> fail $ "Unknown function call!"
                 -}
+        EAppS _ str -> do
+            -- add to string constants
+            let str' = str ++ "\00"
+            string_num <- gets next_string_num
+            const_strings <- gets string_constants
+            let const_name = "@.str" ++ (show string_num)
+            let string_constant = const_name ++ " = private constant [" ++ (show $ length(str')) ++ " x i8] c\"" ++ str' ++ "\""
+            
+            modify (\e -> e { next_string_num = string_num, string_constants = string_constant:const_strings } )
+            
+            -- push instruction
+            putInstruction $ FuncCallString str' const_name
+            
+            return (Nothing, Void)
         ERel e0 op e1 -> do
             (Just reg0, t) <- compileExp e0
             (Just reg1, _) <- compileExp e1
@@ -335,9 +354,6 @@ compileExp expr = do
             putInstruction $ Load Bool ret_reg ret_reg_ptr
             
             return (Just ret_reg, Bool)
-            
-        otherwise -> do
-            fail $ show expr
             
 	where
 		tidyRegs :: [(Maybe Register, Type)] -> [(Register, Type)]
@@ -460,20 +476,23 @@ compileStm (SType typ stm) = do
             let end_label = "lab" ++ (show end_label_id)
             let then_label = "lab" ++ (show then_label_id)
             (val,typ) <- compileExp expr
-            case val of
-                Just reg@(name,ptr)    -> do
-                    tmp_val_reg <- newRegister (Ident "tmp") False
-                    tobool_reg <- newRegister (Ident "tobool") False
-                    if typ == Doub
-                        then putInstruction $ AddLit Plus Doub tmp_val_reg "0.0" "0.0"
-                        else putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
-                    putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
-                    putInstruction $ BrCond tobool_reg then_label end_label
-                    putInstruction $ Label then_label Nop
-                    compileStm stmt                    
-                    putInstruction $ BrUnCond end_label
-                    putInstruction $ Label end_label Nop
-                Nothing     -> fail $ "if fail" 
+            case expr of
+                ELitTrue -> compileStm stmt
+                otherwise -> do
+                    case val of
+                        Just reg@(name,ptr)    -> do
+                            tmp_val_reg <- newRegister (Ident "tmp") False
+                            tobool_reg <- newRegister (Ident "tobool") False
+                            if typ == Doub
+                                then putInstruction $ AddLit Plus Doub tmp_val_reg "0.0" "0.0"
+                                else putInstruction $ AddLit Plus Bool tmp_val_reg "0" "0"
+                            putInstruction $ IfCmp NE typ tobool_reg reg tmp_val_reg -- save result to tobool_reg
+                            putInstruction $ BrCond tobool_reg then_label end_label
+                            putInstruction $ Label then_label Nop
+                            compileStm stmt                    
+                            putInstruction $ BrUnCond end_label
+                            putInstruction $ Label end_label Nop
+                        Nothing     -> fail $ "if fail" 
         CondElse  expr ifs els  -> do
             end_label_id <- getLabel
             then_label_id <- getLabel
@@ -706,6 +725,7 @@ transLLVMInstr instr = do
             case t of
                 Void      -> "\tcall " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
                 otherwise -> "\t" ++ transRegName(out_r) ++ " = call " ++ typeToLLVMType(t) ++ " @" ++ n ++ "(" ++ transRegList(rs) ++ ")"
+        FuncCallString str constr -> "\tcall void @printString(i8* getelementptr inbounds ([ " ++ (show $ length(str)) ++ " x i8 ]* " ++ constr ++ ", i32 0, i32 0))"
         Negation t reg1 reg2           -> "\t" ++ transRegName(reg1) ++ " = xor " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", 1"
         Mul t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = mul " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
         Modulus t reg1 reg2 reg3         -> "\t" ++ transRegName(reg1) ++ " = srem " ++ typeToLLVMType(t) ++ " " ++ transRegName(reg2) ++ ", " ++ transRegName(reg3)
@@ -764,5 +784,11 @@ compileTree (Program defs) = do
 	
 	-- compiledCode now has translated jasmine values
 	compiled_code <- gets compiledCode
-	return $ compiled_code
+	
+	-- add constants
+	constants <- gets string_constants
+	let constants' = intersperse "\n" constants
+	let compiled_code' = constants' ++ compiled_code
+	
+	return $ compiled_code'
 
