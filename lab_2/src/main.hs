@@ -39,15 +39,15 @@ check n s = case pProgram (myLexer s) of
                                                 putStrLn err
                                                 exitFailure
                                         Ok prg    -> do
-                                                putStrLn "Compile: OK"
+                                                --putStrLn "Compile: OK"
                                                 --mapM_ (putStrLn) prg
                                                 let llvm_code = concat $ intersperse "\n" prg
                                                 
                                                 -- write jasmin code
                                                 writeFile (genOutputDir n) llvm_code
                                                                                                 
-                                                -- run jasmin on output file
-                                                --system $ "java -jar lib/jasmin.jar" ++ (genJOutputFlag n) ++ (genJOutputDir n)
+                                                -- run llvm-as on output file
+                                                system $ "llvm-as -f " ++ (genOutputDir n)
                                                 
                                                 -- ALRIGHT!
                                                 hPutStr stderr "OK"
@@ -65,8 +65,3 @@ genOutputDir :: String -> String
 genOutputDir n = case (takeDirectory n) of
 	"" -> (takeBaseName n) ++ ".ll"
 	otherwise -> ((takeDirectory n) ++ "/" ++ (takeBaseName n) ++ ".ll")
-
-genOutputFlag :: String -> String
-genOutputFlag n = case (takeDirectory n) of
-	"" -> " "
-	otherwise -> " -d " ++ ((takeDirectory n) ++ "/ ")

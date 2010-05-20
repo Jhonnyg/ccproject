@@ -658,18 +658,6 @@ compileStm (SType typ stm) = do
                     putInstruction $ Label end_label Nop
                     
                 Nothing -> fail $ "while-stm fail"
-			
-            {-label_id_1 <- getLabel
-			label_id_2 <- getLabel
-			let label_1 = "lab" ++ (show label_id_1)
-			let label_2 = "lab" ++ (show label_id_2)
-
-			putInstruction $ Goto label_2
-			putInstruction $ Label label_1
-			compileStm stmt
-			putInstruction $ Label label_2
-			compileExp expr	
-			putInstruction $ IfNe label_1 -}
             
         SExp exprs		-> do
             compileExp exprs
