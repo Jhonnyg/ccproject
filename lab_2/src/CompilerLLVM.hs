@@ -52,13 +52,6 @@ data LLVMInstruction =
     | Modulus Type Register Register Register
     | Division Type Register Register Register
 	deriving (Show)
---Add typ inc_reg tmp_reg "1"
-
-{-data Value =
-  Integer
-  | Boolean
-  | Double
-  deriving (Show)-}
 	
 type MethodDefinition = (MethodLinkType, ([Type], Type))
 data MethodLinkType = Internal MethodAttrib
@@ -112,8 +105,7 @@ newRegister ident@(Ident n) pointer = do
       let reg_name = "%" ++ n ++ "0"
       return (reg_name, pointer)
 
--- add variable to current context (i.e. give it a local var number)
-
+-- add variable to current context
 addVar :: Type -> Ident -> CP Register
 addVar t n = do
 	v:vs <- gets variables
@@ -359,10 +351,8 @@ compileDecl t (Init ident expr) = do -- variable declaration with initialization
     ELitTrue   -> putInstruction $ (StoreLit t "1" reg_name)
     ELitFalse  -> putInstruction $ (StoreLit t "0" reg_name)
     otherwise  -> do
-      (val, t') <- compileExp expr
-      case val of
-          Just reg_from -> putInstruction $ (Store t reg_from reg_name)
-          Nothing -> fail $ "lol"
+        (Just reg_from, t') <- compileExp expr
+        putInstruction $ (Store t reg_from reg_name)
 
 -- compile statements
 compileStm :: Stmt -> CP ()
