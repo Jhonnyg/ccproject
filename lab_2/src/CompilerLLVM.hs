@@ -395,10 +395,7 @@ compileStm (SType typ stm) = do
         Ret expr          -> do
             (val,typ) <- compileExp expr
             case val of
-                Just reg_val -> do
-                    --ret_val <- newRegister (Ident "retval") False
-                    --putInstruction $ Load typ ret_val reg_val
-                    putInstruction $ Return typ reg_val --Return Type String
+                Just reg_val -> putInstruction $ Return typ reg_val 
                 Nothing -> fail $ "Return statement failed"
         
         VRet             -> putInstruction $ ReturnVoid
