@@ -1,8 +1,11 @@
+Function Dependencies
+---------------------
 
 Course:
 code -> name
 code -> #credits
 code -> #maxstudents
+code -> classname
 
 ClassifiedAs:
 classname -> code
@@ -15,4 +18,4 @@ Department:
 code -> name
 
 Programme:
-name -> name
+name -> name (of the department)
