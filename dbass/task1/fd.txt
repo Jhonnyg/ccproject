@@ -1,0 +1,18 @@
+
+Course:
+code -> name
+code -> #credits
+code -> #maxstudents
+
+ClassifiedAs:
+classname -> code
+
+Student:
+#persnumber -> name
+#persnumber, code -> grade
+
+Department:
+code -> name
+
+Programme:
+name -> name
