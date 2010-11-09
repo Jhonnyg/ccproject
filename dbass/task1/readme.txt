@@ -6,8 +6,6 @@ Sven Andersson, 19860708-4632
 Jhonny Göransson, 19840611-8235
 ------------------------------------------------------------------------------
 
-
-
 Weak-entity:
 We choose branches as weak entities of programmes, as they are unique
 depending on the programme they belong to.
