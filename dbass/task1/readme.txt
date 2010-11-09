@@ -14,6 +14,7 @@ depending on the programme they belong to.
 
 ISA:
 Since not all courses may have a maximum number of students allowed, we
-thought that this will be a good example of a ISA-relation.
+thought that this will be a good example of a ISA-relation, since a limited-
+course would essentially be a sub-entity of Course with one more attribute.
 
 ------------------------------------------------------------------------------
