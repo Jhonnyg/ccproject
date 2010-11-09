@@ -1,0 +1,57 @@
+
+Department(_name_)
+
+Programme(_name_)
+
+Student(name, _persnumber_)
+
+Course(_code_, name, credits, department)
+  department -> Department.name
+
+LimetedCourse(_code_, maxstudent)
+
+CourseClass(_classname_)
+
+
+Branch(name, programme)
+  programme -> Programme.name
+
+HostedBy(programme, department)
+  programme -> Programme.name
+  department -> Department.name
+
+Registered(student, course)
+  student -> Student.persnumber
+  course -> Course.code
+
+WaitingList(student, course)
+  student -> Student.persnumber
+  course -> LimitedCourse.code
+
+HasTaken(student, course)
+  student -> Student.persnumber
+  course -> Course.code
+
+BranchMandatory(branch, programme, course)
+  (branch, programme) -> Branch(branch, programme)
+  course -> Course.code
+
+BranchRecommended(branch, programme, course)
+  (branch, programme) -> Branch(branch, programme)
+  course -> Course.code
+
+ProgrammeMandatory(programme, course)
+  programme -> Programme.name
+  course -> Course.code
+
+Prereq(course, prerequisitecourse)
+  course -> Course.code
+  prerequisitecourse -> Course.code
+
+BelongsTo(student, branch, programme)
+  student -> Student.persnumber
+  (branch, programme) -> Branch(branch, programme)
+
+ClassifiedAs(course, class)
+  course -> Course.code
+  class -> CourseClass.classname
