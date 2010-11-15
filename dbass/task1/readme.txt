@@ -1,11 +1,17 @@
 ﻿------------------------------------------------------------------------------
 Databases (HT2010) - Assignment - Task 1
-2010-11-09
+2010-11-15
 
 Sven Andersson, 19860708-4632
 Jhonny Göransson, 19840611-8235
 ------------------------------------------------------------------------------
+-- Updated 2010-11-15:
 
+Diagram: Lines does not cross anymore! :)
+Schema: Added registertime to WaitingList.
+FD: Added WaitingList and HasTaken.
+
+-- Original submission:
 When looking at the domain description, we beleive that our relationship model 
 is sound. Looking at some of the future possible queries we should be able to
 support, we can see that the relevant information is possible to extract from

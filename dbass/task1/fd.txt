@@ -12,10 +12,16 @@ classname -> code
 
 Student:
 #persnumber -> name
-#persnumber, code -> grade
 
 Department:
 code -> name
 
 Programme:
 name -> name (of the department)
+
+WaitingList:
+#persnumber, code -> registertime
+code -> name
+
+HasTaken:
+#persnumber, code -> grade
