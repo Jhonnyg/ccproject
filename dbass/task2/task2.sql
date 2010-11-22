@@ -11,7 +11,7 @@ CREATE TABLE Programme (
 );
 
 CREATE TABLE Branch(
-	name	VARCHAR(64),
+	name		VARCHAR(64),
 	progname	VARCHAR(64),
 	CONSTRAINT BranchOf FOREIGN KEY (progname) REFERENCES Programme(name)
 );
@@ -79,8 +79,8 @@ CREATE TABLE BranchMandatory (
 	programme VARCHAR(64),
 	branch	VARCHAR(64),
 	code	CHAR(6),
-	FOREIGN KEY (programme) REFERENCES Programme,
-	FOREIGN KEY (branch) REFERENCES Branch(name),
+	FOREIGN KEY (programme) REFERENCES Branch(programme),
+	FOREIGN KEY (branch) REFERENCES Branch(BranchOf),
 	FOREIGN KEY (code) REFERENCES Course(code)
 );
 
@@ -88,7 +88,7 @@ CREATE TABLE BranchRecommended (
 	programme VARCHAR(64),
 	branch	VARCHAR(64),
 	code	CHAR(6),
-	FOREIGN KEY (programme) REFERENCES Programme,
+	FOREIGN KEY (programme) REFERENCES Branch(programme),
 	FOREIGN KEY (branch) REFERENCES Branch(name),
 	FOREIGN KEY (code) REFERENCES Course(code)
 );
