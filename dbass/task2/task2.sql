@@ -4,18 +4,20 @@ CREATE TABLE Department (
 );
 
 CREATE TABLE Programme (
-	name VARCHAR(64),
+	name 	VARCHAR(64),
+	depname VARCHAR(64),
 	PRIMARY KEY (name),
-	CONSTRAINT HostedBy FOREIGN KEY (name) REFERENCES Department(name)
+	CONSTRAINT HostedBy FOREIGN KEY (depname) REFERENCES Department(name)
 );
 
 CREATE TABLE Course (
 	code		CHAR(6),
 	name		VARCHAR(64),
+	depname		VARCHAR(64),
 	credits		INT,
-	maxstudents INT,
+	maxstudents INT DEFAULT NULL,
 	PRIMARY KEY (code),
-	CONSTRAINT GivenBy FOREIGN KEY (name) REFERENCES Department(name)
+	CONSTRAINT GivenBy FOREIGN KEY (depname) REFERENCES Department(name)
 );
 
 CREATE TABLE PreReq (
