@@ -1,22 +1,31 @@
-INSERT INTO Student
-	VALUES (8406118235,'Jhonny Göransson');
-	
-INSERT INTO Student
-	VALUES (8601011337,'Sven Andersson');
-	
-INSERT INTO Student
-	VALUES (8611283550,'Ingemar Åhdal');
-	
-	
+-- Departments	
 INSERT INTO Department
-	VALUES ('Computer Science and Engineering');
+	VALUES ('Computing Science');
 	
 INSERT INTO Department
 	VALUES ('Signals and Systems');
 	
+-- Programmes
+INSERT INTO Programme
+	VALUES ('Computer Science and Engineering', 'Computing Science');
+
+-- Branches	
+INSERT INTO Branch
+	VALUES ('Computer Languages', 'Computer Science and Engineering');
+	
+-- Courses
 INSERT INTO Course 
 	(code,name,credits,depname)
-	VALUES ('TDA357','Databases',10,'Computer Science and Engineering');
+	VALUES ('TDA357','Databases',10, 'Computing Science');
 	
-INSERT INTO Branch
-	VALUES ('Computer Languages','Computer Science and Engineering');
+	
+	
+	
+INSERT INTO Student
+	VALUES (8406118235, 'Jhonny GÃ¶ransson', 'Computer Languages', 'Computer Science and Engineering');
+
+INSERT INTO Student
+	VALUES (8601011337,'Sven Andersson', 'Computer Languages', 'Computer Science and Engineering');
+
+INSERT INTO Student
+	VALUES (8611283550,'Ingemar Ã…hdal', 'Computer Languages', 'Computer Science and Engineering');
