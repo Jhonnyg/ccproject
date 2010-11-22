@@ -47,12 +47,19 @@ CREATE VIEW DBRecommendedCourses AS
 
 
 -- get sum of credits for a student
-SELECT Student.name as name, credits
-	FROM Student,Course
-	WHERE credits = (SELECT SUM(Course.credits) as credits FROM Student,HasTaken,Course
-		WHERE Student.persnumber = HasTaken.persnumber
-					AND Course.code = HasTaken.code
-					AND HasTaken.grade = ANY (3,4,5));
+SELECT Student.persnumber, SUM(Course.credits)
+	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN Course ON HasTaken.code = Course.code
+	GROUP BY Student.persnumber);
+/*
+(SELECT Student.persnumber, SUM(Course.credits) as credits
+FROM Student JOIN HasTaken ON Student.persnumber =  HasTaken.persnumber
+JOIN Course ON Course.code = HasTaken.code
+		WHERE HasTaken.grade = ANY (3,4,5) GROUP BY Student.persnumber)
+
+
+SELECT Student.persnumber, SUM(Course.credits)
+FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber =  HasTaken.persnumber LEFT OUTER JOIN Course ON HasTaken.code = Course.code GROUP BY Student.persnumber
+*/
 
 /*
 SELECT Student.name as name,Course.name as coursename
