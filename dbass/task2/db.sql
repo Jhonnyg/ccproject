@@ -29,3 +29,4 @@ INSERT INTO Student
 
 INSERT INTO Student
 	VALUES (8611283550,'Ingemar Åhdal', 'Computer Languages', 'Computer Science and Engineering');
+	
