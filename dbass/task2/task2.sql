@@ -43,7 +43,7 @@ CREATE TABLE Student (
 	branch	VARCHAR(64),
 	programme	VARCHAR(64),
 	PRIMARY KEY (persnumber),
-	CONSTRAINT BelongsTo FOREIGN KEY (branch, programme) REFERENCES Branch(name, progname),
+	CONSTRAINT BelongsTo FOREIGN KEY (branch, programme) REFERENCES Branch(name, progname)
 );
 
 CREATE TABLE Registered (
