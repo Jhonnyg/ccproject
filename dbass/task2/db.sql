@@ -33,7 +33,7 @@ INSERT INTO Student
 	VALUES (8406118235, 'Jhonny Göransson', 'Computer Languages', 'Computer Science and Engineering');
 
 INSERT INTO Student
-	VALUES (8601011337,'Sven Andersson', 'Computer Languages', 'Computer Science and Engineering');
+	VALUES (8607084632,'Sven Andersson', 'Computer Languages', 'Computer Science and Engineering');
 
 INSERT INTO Student
 	VALUES (8611283550,'Ingemar Åhdal', 'Computer Languages', 'Computer Science and Engineering');
