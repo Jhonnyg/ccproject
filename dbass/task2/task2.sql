@@ -92,7 +92,3 @@ CREATE TABLE BranchRecommended (
 	FOREIGN KEY (branch, programme) REFERENCES Branch(name, progname),
 	FOREIGN KEY (code) REFERENCES Course(code)
 );
-
-CREATE VIEW DBStudents AS
-	SELECT * FROM Students
-
