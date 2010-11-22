@@ -18,6 +18,16 @@ INSERT INTO Course
 	(code,name,credits,depname)
 	VALUES ('TDA357','Databases',10, 'Computing Science');
 	
+INSERT INTO Course
+	(code,name,credits,depname)
+	VALUES ('TDA335','Programming Project, Major',10,'Computing Science');
+
+-- Courses that are mandatory under a specific branch
+INSERT INTO BranchMandatory
+	VALUES ('Computer Science and Engineering','Computer Languages','TDA335');
+	
+INSERT INTO BranchMandatory
+	VALUES ('Computer Science and Engineering','Computer Languages','TDA357');
 	
 -- Students
 INSERT INTO Student
@@ -29,10 +39,11 @@ INSERT INTO Student
 INSERT INTO Student
 	VALUES ('8611283550','Ingemar Åhdal', 'Computer Languages', 'Computer Science and Engineering');
 	
-
 -- Courses registered
 INSERT INTO Registered VALUES ('8607084632', 'TDA357')
 
 -- Courses waiting lists
 INSERT INTO WaitingList VALUES ('8607084632', 'TDA357', 123456)
 
+-- Courses history and grade
+INSERT INTO HasTaken VALUES ('8406118235','TDA357',5);
