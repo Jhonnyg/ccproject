@@ -10,6 +10,12 @@ CREATE TABLE Programme (
 	CONSTRAINT HostedBy FOREIGN KEY (depname) REFERENCES Department(name)
 );
 
+CREATE TABLE Branch(
+	name	VARCHAR(64),
+	progname	VARCHAR(64),
+	CONSTRAINT BranchOf FOREIGN KEY (progname) REFERENCES Programme(name)
+);
+
 CREATE TABLE Course (
 	code		CHAR(6),
 	name		VARCHAR(64),
@@ -33,12 +39,22 @@ CREATE TABLE CourseClass (
 CREATE TABLE Student (
 	persnumber 	CHAR(12),
 	name		VARCHAR(64),
-	PRIMARY KEY (persnumber)
+	programme	VARCHAR(64),
+	PRIMARY KEY (persnumber),
+	CONSTRAINT BelongsTo FOREIGN KEY (programme) REFERENCES Programme(name)
 );
 
 CREATE TABLE Registered (
 	persnumber CHAR(12),
 	code       CHAR(6),
+	FOREIGN KEY (persnumber) REFERENCES Student,
+	FOREIGN KEY (code) REFERENCES Course
+);
+
+CREATE TABLE WaitingList (
+	persnumber CHAR(12),
+	code       CHAR(6),
+	registertime	INT,
 	FOREIGN KEY (persnumber) REFERENCES Student,
 	FOREIGN KEY (code) REFERENCES Course
 );
@@ -51,3 +67,31 @@ CREATE TABLE HasTaken (
 	FOREIGN KEY (code) REFERENCES Course,
 	CONSTRAINT ValidGrade CHECK (grade in ('U',3,4,5))
 );
+
+CREATE TABLE ProgrammeMandatory (
+	programme VARCHAR(64),
+	code	CHAR(6),
+	FOREIGN KEY (programme) REFERENCES Programme,
+	FOREIGN KEY (code) REFERENCES Course
+);
+
+CREATE TABLE BranchMandatory (
+	programme VARCHAR(64),
+	branch	VARCHAR(64)
+	code	CHAR(6),
+	FOREIGN KEY (programme) REFERENCES Programme,
+	FOREIGN KEY (branch) REFERENCES Branch(name),
+	FOREIGN KEY (code) REFERENCES Course
+);
+
+CREATE TABLE BranchRecommended (
+	programme VARCHAR(64),
+	branch	VARCHAR(64)
+	code	CHAR(6),
+	FOREIGN KEY (programme) REFERENCES Programme,
+	FOREIGN KEY (branch) REFERENCES Branch(name),
+	FOREIGN KEY (code) REFERENCES Course
+);
+
+
+
