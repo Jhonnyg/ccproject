@@ -19,14 +19,20 @@ INSERT INTO Course
 	VALUES ('TDA357','Databases',10, 'Computing Science');
 	
 	
-	
-	
+-- Students
 INSERT INTO Student
-	VALUES (8406118235, 'Jhonny Göransson', 'Computer Languages', 'Computer Science and Engineering');
+	VALUES ('8406118235', 'Jhonny Göransson', 'Computer Languages', 'Computer Science and Engineering');
 
 INSERT INTO Student
-	VALUES (8607084632,'Sven Andersson', 'Computer Languages', 'Computer Science and Engineering');
+	VALUES ('8607084632','Sven Andersson', 'Computer Languages', 'Computer Science and Engineering');
 
 INSERT INTO Student
-	VALUES (8611283550,'Ingemar Åhdal', 'Computer Languages', 'Computer Science and Engineering');
+	VALUES ('8611283550','Ingemar Åhdal', 'Computer Languages', 'Computer Science and Engineering');
 	
+
+-- Courses registered
+INSERT INTO Registered VALUES ('8607084632', 'TDA357')
+
+-- Courses waiting lists
+INSERT INTO WaitingList VALUES ('8607084632', 'TDA357', 123456)
+
