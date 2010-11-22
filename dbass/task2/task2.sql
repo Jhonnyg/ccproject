@@ -40,9 +40,10 @@ CREATE TABLE CourseClass (
 CREATE TABLE Student (
 	persnumber 	CHAR(12),
 	name		VARCHAR(64),
+	branch	VARCHAR(64),
 	programme	VARCHAR(64),
 	PRIMARY KEY (persnumber),
-	CONSTRAINT BelongsTo FOREIGN KEY (programme) REFERENCES Programme(name)
+	CONSTRAINT BelongsTo FOREIGN KEY (branch, programme) REFERENCES Branch(name, progname),
 );
 
 CREATE TABLE Registered (
