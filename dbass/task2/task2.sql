@@ -81,7 +81,7 @@ CREATE TABLE BranchMandatory (
 	code	CHAR(6),
 	FOREIGN KEY (programme) REFERENCES Programme,
 	FOREIGN KEY (branch) REFERENCES Branch(name),
-	FOREIGN KEY (code) REFERENCES Course
+	FOREIGN KEY (code) REFERENCES Course(code)
 );
 
 CREATE TABLE BranchRecommended (
@@ -90,7 +90,7 @@ CREATE TABLE BranchRecommended (
 	code	CHAR(6),
 	FOREIGN KEY (programme) REFERENCES Programme,
 	FOREIGN KEY (branch) REFERENCES Branch(name),
-	FOREIGN KEY (code) REFERENCES Course
+	FOREIGN KEY (code) REFERENCES Course(code)
 );
 
 
