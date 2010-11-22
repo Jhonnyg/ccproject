@@ -13,6 +13,7 @@ CREATE TABLE Programme (
 CREATE TABLE Branch(
 	name		VARCHAR(64),
 	progname	VARCHAR(64),
+	PRIMARY KEY (name, progname),
 	CONSTRAINT BranchOf FOREIGN KEY (progname) REFERENCES Programme(name)
 );
 
@@ -56,7 +57,7 @@ CREATE TABLE WaitingList (
 	code       CHAR(6),
 	registertime	INT,
 	FOREIGN KEY (persnumber) REFERENCES Student,
-	FOREIGN KEY (code) REFERENCES Course
+	FOREIGN KEY (code) REFERENCES Course(code)
 );
 
 CREATE TABLE HasTaken (
@@ -64,23 +65,22 @@ CREATE TABLE HasTaken (
 	code       CHAR(6),
 	grade	   CHAR(1),
 	FOREIGN KEY (persnumber) REFERENCES Student,
-	FOREIGN KEY (code) REFERENCES Course,
+	FOREIGN KEY (code) REFERENCES Course(code),
 	CONSTRAINT ValidGrade CHECK (grade in ('U',3,4,5))
 );
 
 CREATE TABLE ProgrammeMandatory (
 	programme VARCHAR(64),
 	code	CHAR(6),
-	FOREIGN KEY (programme) REFERENCES Programme,
-	FOREIGN KEY (code) REFERENCES Course
+	FOREIGN KEY (programme) REFERENCES Programme(name),
+	FOREIGN KEY (code) REFERENCES Course(code)
 );
 
 CREATE TABLE BranchMandatory (
 	programme VARCHAR(64),
 	branch	VARCHAR(64),
 	code	CHAR(6),
-	FOREIGN KEY (programme) REFERENCES Branch(programme),
-	FOREIGN KEY (branch) REFERENCES Branch(BranchOf),
+	FOREIGN KEY (branch, programme) REFERENCES Branch(name, progname),
 	FOREIGN KEY (code) REFERENCES Course(code)
 );
 
@@ -88,8 +88,7 @@ CREATE TABLE BranchRecommended (
 	programme VARCHAR(64),
 	branch	VARCHAR(64),
 	code	CHAR(6),
-	FOREIGN KEY (programme) REFERENCES Branch(programme),
-	FOREIGN KEY (branch) REFERENCES Branch(name),
+	FOREIGN KEY (branch, programme) REFERENCES Branch(name, progname),
 	FOREIGN KEY (code) REFERENCES Course(code)
 );
 
