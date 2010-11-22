@@ -21,8 +21,38 @@ CREATE VIEW DBFinishedCourses AS
 	
 
 
---For all students, the mandatory courses (branch and programme) they have not yet taken.
+-- For all students, the mandatory courses (branch and programme) they have not yet taken.
+CREATE VIEW DBMandatoryCourses AS 
+	((SELECT Student.name as name, Course.name as coursename
+		FROM Student,BranchMandatory,Course
+		WHERE BranchMandatory.branch = Student.branch AND BranchMandatory.programme = Student.programme AND Course.code = BranchMandatory.code)
+		UNION
+		(SELECT Student.name as name, Course.name as coursename
+			FROM Student,ProgrammeMandatory,Course
+			WHERE ProgrammeMandatory.programme = Student.programme AND Course.code = ProgrammeMandatory.code))
+	MINUS
+	(SELECT Student.name as name,Course.name as coursename
+		FROM Student,HasTaken,Course
+		WHERE Student.persnumber = HasTaken.persnumber AND Course.code = HasTaken.code);
 
+-- For all students, the recommended courses of their branch that they have not yet taken.
+CREATE VIEW DBRecommendedCourses AS 
+	(SELECT Student.name as name, Course.name as coursename
+		FROM Student,BranchRecommended,Course
+		WHERE BranchRecommended.branch = Student.branch AND BranchRecommended.programme = Student.programme AND Course.code = BranchRecommended.code)
+	MINUS
+	(SELECT Student.name as name,Course.name as coursename
+		FROM Student,HasTaken,Course
+		WHERE Student.persnumber = HasTaken.persnumber AND Course.code = HasTaken.code);
+
+
+-- get sum of credits for a student
+SELECT Student.name as name, credits
+	FROM Student,Course
+	WHERE credits = (SELECT SUM(Course.credits) as credits FROM Student,HasTaken,Course
+		WHERE Student.persnumber = HasTaken.persnumber
+					AND Course.code = HasTaken.code
+					AND HasTaken.grade = ANY (3,4,5));
 
 /*
 SELECT Student.name as name,Course.name as coursename

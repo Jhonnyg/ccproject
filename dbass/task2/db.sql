@@ -9,9 +9,15 @@ INSERT INTO Department
 INSERT INTO Programme
 	VALUES ('Computer Science and Engineering', 'Computing Science');
 
+INSERT INTO Programme
+	VALUES ('Automation Control, Automation And Mechatronics', 'Signals and Systems');
+
 -- Branches	
 INSERT INTO Branch
 	VALUES ('Computer Languages', 'Computer Science and Engineering');
+	
+INSERT INTO Branch
+	VALUES ('Mechatronics', 'Automation Control, Automation And Mechatronics');
 	
 -- Courses
 INSERT INTO Course 
@@ -21,6 +27,14 @@ INSERT INTO Course
 INSERT INTO Course
 	(code,name,credits,depname)
 	VALUES ('TDA335','Programming Project, Major',10,'Computing Science');
+	
+INSERT INTO Course
+	(code,name,credits,depname)
+	VALUES ('TDA112','How to make robot',10,'Signals and Systems');
+
+-- Courses that are mandatory under a specific branch
+INSERT INTO ProgrammeMandatory
+	VALUES ('Automation Control, Automation And Mechatronics','TDA357');
 
 -- Courses that are mandatory under a specific branch
 INSERT INTO BranchMandatory
@@ -28,6 +42,9 @@ INSERT INTO BranchMandatory
 	
 INSERT INTO BranchMandatory
 	VALUES ('Computer Science and Engineering','Computer Languages','TDA357');
+	
+INSERT INTO BranchMandatory
+	VALUES ('Automation Control, Automation And Mechatronics','Mechatronics','TDA112');
 	
 -- Students
 INSERT INTO Student
@@ -37,7 +54,7 @@ INSERT INTO Student
 	VALUES ('8607084632','Sven Andersson', 'Computer Languages', 'Computer Science and Engineering');
 
 INSERT INTO Student
-	VALUES ('8611283550','Ingemar Åhdal', 'Computer Languages', 'Computer Science and Engineering');
+	VALUES ('8611283550','Ingemar Åhdal', 'Mechatronics', 'Automation Control, Automation And Mechatronics');
 	
 -- Courses registered
 INSERT INTO Registered VALUES ('8607084632', 'TDA357')
