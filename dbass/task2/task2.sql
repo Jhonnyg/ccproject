@@ -77,7 +77,7 @@ CREATE TABLE ProgrammeMandatory (
 
 CREATE TABLE BranchMandatory (
 	programme VARCHAR(64),
-	branch	VARCHAR(64)
+	branch	VARCHAR(64),
 	code	CHAR(6),
 	FOREIGN KEY (programme) REFERENCES Programme,
 	FOREIGN KEY (branch) REFERENCES Branch(name),
@@ -86,7 +86,7 @@ CREATE TABLE BranchMandatory (
 
 CREATE TABLE BranchRecommended (
 	programme VARCHAR(64),
-	branch	VARCHAR(64)
+	branch	VARCHAR(64),
 	code	CHAR(6),
 	FOREIGN KEY (programme) REFERENCES Programme,
 	FOREIGN KEY (branch) REFERENCES Branch(name),
