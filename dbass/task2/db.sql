@@ -17,3 +17,6 @@ INSERT INTO Department
 INSERT INTO Course 
 	(code,name,credits,depname)
 	VALUES ('TDA357','Databases',10,'Computer Science and Engineering');
+	
+INSERT INTO Branch
+	VALUES ('Computer Languages','Computer Science and Engineering');
