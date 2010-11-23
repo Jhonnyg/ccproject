@@ -35,8 +35,9 @@ CREATE TABLE PreReq (
 CREATE TABLE CourseClass (
 	classname 	VARCHAR(64),
 	code		CHAR(6),
-	PRIMARY KEY (classname),
-	CONSTRAINT ClassifiedAs FOREIGN KEY (code) REFERENCES Course(code)
+	PRIMARY KEY (classname, code),
+	CONSTRAINT ClassifiedAs FOREIGN KEY (code) REFERENCES Course(code),
+	CONSTRAINT ValidClass CHECK (classname in ('mathematical','research','seminar'))
 );
 
 CREATE TABLE Student (
