@@ -53,13 +53,13 @@ SELECT Student.persnumber, SUM(Course.credits)
 	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN Course ON HasTaken.code = Course.code
 	GROUP BY Student.persnumber);
 
-
 -- the number of mandatory courses they have yet to read (branch or programme).
 SELECT Student.persnumber, SUM(Course.credits)
 	FROM Student LEFT OUTER JOIN DBMandatoryCourses ON Student.persnumber = DBMandatoryCourses.persnumber LEFT OUTER JOIN Course ON HasTaken.code = Course.code
 	GROUP BY Student.persnumber);
-
-
+	
+-- the number of branch-specific (mandatory and recommended) credits they have taken.
+	
 /*
 (SELECT Student.persnumber, SUM(Course.credits) as credits
 FROM Student JOIN HasTaken ON Student.persnumber =  HasTaken.persnumber

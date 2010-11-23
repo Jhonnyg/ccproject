@@ -33,8 +33,10 @@ CREATE TABLE PreReq (
 );
 
 CREATE TABLE CourseClass (
-	classname VARCHAR(64),
-	PRIMARY KEY (classname)
+	classname 	VARCHAR(64),
+	code		CHAR(6),
+	PRIMARY KEY (classname),
+	CONSTRAINT ClassifiedAs FOREIGN KEY (code) REFERENCES Course(code)
 );
 
 CREATE TABLE Student (
