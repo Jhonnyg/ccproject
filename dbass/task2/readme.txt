@@ -21,8 +21,8 @@ with the database, tells us that the aquired data from the SELECT queries
 must be correct.
 
 Files:
-	task2.sql - Contains SQL to create the tables.
+	database.sql - Contains SQL to create the tables.
 	views.sql - Contains SQL to create the views specified in the assignment.
-	db.sql    - Contains SQL to propagate the database with some information.
+	data.sql - Contains SQL to propagate the database with some information.
 
 ------------------------------------------------------------------------------
