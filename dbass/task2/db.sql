@@ -31,6 +31,25 @@ INSERT INTO Course
 INSERT INTO Course
 	(code,name,credits,depname)
 	VALUES ('TDA112','How to make robot',10,'Signals and Systems');
+	
+INSERT INTO Course
+	(code,name,credits,depname)
+	VALUES ('DAT026','Mathematical modelling',10,'Computing Science');
+
+INSERT INTO Course
+	(code,name,credits,depname)
+	VALUES ('DAT235','Research-oriented special course',10,'Computing Science');
+
+INSERT INTO Course
+	(code,name,credits,depname)
+	VALUES ('TDA251','Algorithms, advanced course',10,'Computing Science');
+
+-- Classified courses
+INSERT INTO CourseClass
+	VALUES ('Mathematics','DAT026');
+	
+INSERT INTO CourseClass
+	VALUES ('Research','DAT235');
 
 -- Courses that are mandatory under a specific branch
 INSERT INTO ProgrammeMandatory
@@ -46,6 +65,10 @@ INSERT INTO BranchMandatory
 INSERT INTO BranchMandatory
 	VALUES ('Automation Control, Automation And Mechatronics','Mechatronics','TDA112');
 	
+-- Courses that are recommended under a specific branch
+INSERT INTO BranchRecommended
+	VALUES ('Computer Science and Engineering','Computer Languages','TDA251');
+	
 -- Students
 INSERT INTO Student
 	VALUES ('8406118235', 'Jhonny Göransson', 'Computer Languages', 'Computer Science and Engineering');
@@ -56,13 +79,17 @@ INSERT INTO Student
 INSERT INTO Student
 	VALUES ('8611283550','Ingemar Åhdal', 'Mechatronics', 'Automation Control, Automation And Mechatronics');
 	
+INSERT INTO Student
+	VALUES ('8701983522','Filip Lundborg', 'Mechatronics', 'Automation Control, Automation And Mechatronics');
+	
 -- Courses registered
-INSERT INTO Registered VALUES ('8607084632', 'TDA357')
+INSERT INTO Registered VALUES ('8607084632', 'TDA357');
 
 -- Courses waiting lists
-INSERT INTO WaitingList VALUES ('8607084632', 'TDA357', 123456)
+INSERT INTO WaitingList VALUES ('8607084632', 'TDA357', 123456);
 
 -- Courses history and grade
 INSERT INTO HasTaken VALUES ('8406118235','TDA357',5);
 INSERT INTO HasTaken VALUES ('8406118235','TDA335',3);
 INSERT INTO HasTaken VALUES ('8607084632','TDA335','U');
+INSERT INTO HasTaken VALUES ('8611283550','TDA112','3');
