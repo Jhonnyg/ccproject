@@ -50,6 +50,15 @@ INSERT INTO CourseClass
 	
 INSERT INTO CourseClass
 	VALUES ('research', 'DAT235');
+	
+INSERT INTO CourseClass
+	VALUES ('seminar', 'TDA335');
+	
+INSERT INTO CourseClass
+	VALUES ('mathematical', 'TDA335');
+	
+INSERT INTO CourseClass
+	VALUES ('mathematical', 'TDA357');
 
 -- Courses that are mandatory under a specific branch
 INSERT INTO ProgrammeMandatory

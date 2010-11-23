@@ -58,6 +58,12 @@ SELECT Student.persnumber, COUNT(DBMandatoryCourses.coursename) as mandatoryleft
 	FROM Student LEFT OUTER JOIN DBMandatoryCourses ON Student.persnumber = DBMandatoryCourses.persnumber
 	GROUP BY Student.persnumber;
 	
+-- the number of credits they have taken in courses that are classified as math courses.
+SELECT Student.persnumber, COUNT(ccode)
+	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN (SELECT Course.code as ccode FROM Course,CourseClass WHERE Course.code = CourseClass.code AND CourseClass.classname = 'mathematical') ON HasTaken.code = ccode
+	GROUP BY Student.persnumber;
+
+	
 -- the number of branch-specific (mandatory and recommended) credits they have taken.
 	
 /*
