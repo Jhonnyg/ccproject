@@ -56,9 +56,9 @@ SELECT Student.persnumber, SUM(Course.credits) as totalcredits
 -- the number of branch-specific (mandatory and recommended) credits they have taken.
 SELECT Student.persnumber, SUM(Course.credits)
 	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber
-	LEFT OUTER JOIN ((SELECT BranchMandatory.code as ccode FROM BranchMandatory)
+	LEFT OUTER JOIN ((SELECT BranchMandatory.code as ccode, BranchMandatory.branch as bbranch FROM BranchMandatory)
 	                  UNION
-	                 (SELECT BranchRecommended.code as ccode FROM BranchRecommended)) ON ccode = HasTaken.code
+	                 (SELECT BranchRecommended.code as ccode, BranchRecommended.branch as bbranch FROM BranchRecommended)) ON ccode = HasTaken.code AND bbranch = Student.branch
 	LEFT OUTER JOIN Course ON ccode = Course.code
 	GROUP BY Student.persnumber
 
