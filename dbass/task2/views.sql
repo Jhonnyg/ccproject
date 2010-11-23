@@ -49,14 +49,14 @@ CREATE VIEW DBRecommendedCourses AS
 
 
 -- sub-part of last view: get sum of credits for a student
-SELECT Student.persnumber, SUM(Course.credits)
+SELECT Student.persnumber, SUM(Course.credits) as totalcredits
 	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN Course ON HasTaken.code = Course.code
-	GROUP BY Student.persnumber);
+	GROUP BY Student.persnumber;
 
 -- the number of mandatory courses they have yet to read (branch or programme).
-SELECT Student.persnumber, SUM(Course.credits)
-	FROM Student LEFT OUTER JOIN DBMandatoryCourses ON Student.persnumber = DBMandatoryCourses.persnumber LEFT OUTER JOIN Course ON HasTaken.code = Course.code
-	GROUP BY Student.persnumber);
+SELECT Student.persnumber, COUNT(DBMandatoryCourses.coursename) as mandatoryleft
+	FROM Student LEFT OUTER JOIN DBMandatoryCourses ON Student.persnumber = DBMandatoryCourses.persnumber
+	GROUP BY Student.persnumber;
 	
 -- the number of branch-specific (mandatory and recommended) credits they have taken.
 	

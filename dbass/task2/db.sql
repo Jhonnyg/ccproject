@@ -46,10 +46,10 @@ INSERT INTO Course
 
 -- Classified courses
 INSERT INTO CourseClass
-	VALUES ('Mathematics','DAT026');
+	VALUES ('mathematical', 'DAT026');
 	
 INSERT INTO CourseClass
-	VALUES ('Research','DAT235');
+	VALUES ('research', 'DAT235');
 
 -- Courses that are mandatory under a specific branch
 INSERT INTO ProgrammeMandatory
