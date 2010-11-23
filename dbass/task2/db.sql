@@ -67,7 +67,7 @@ INSERT INTO BranchMandatory
 	
 -- Courses that are recommended under a specific branch
 INSERT INTO BranchRecommended
-	VALUES ('Computer Science and Engineering','Computer Languages','TDA251');
+	VALUES ('Computer Science and Engineering','Computer Languages','TDA251');	
 	
 -- Students
 INSERT INTO Student
@@ -91,5 +91,7 @@ INSERT INTO WaitingList VALUES ('8607084632', 'TDA357', 123456);
 -- Courses history and grade
 INSERT INTO HasTaken VALUES ('8406118235','TDA357',5);
 INSERT INTO HasTaken VALUES ('8406118235','TDA335',3);
+INSERT INTO HasTaken VALUES ('8406118235','TDA251',4);
 INSERT INTO HasTaken VALUES ('8607084632','TDA335','U');
 INSERT INTO HasTaken VALUES ('8611283550','TDA112','3');
+INSERT INTO HasTaken VALUES ('8701983522','DAT235',4);
