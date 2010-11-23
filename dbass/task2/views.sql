@@ -37,6 +37,7 @@ CREATE VIEW DBMandatoryCourses AS
 		FROM Student,HasTaken,Course
 		WHERE Student.persnumber = HasTaken.persnumber AND Course.code = HasTaken.code AND HasTaken.grade = ANY ('3','4','5'));
 
+
 -- For all students, the recommended courses of their branch that they have not yet taken.
 CREATE VIEW DBRecommendedCourses AS 
 	(SELECT Student.persnumber as persnumber, Student.name as name, Course.name as coursename
@@ -96,6 +97,14 @@ LEFT OUTER JOIN
 	GROUP BY Student.persnumber) numseminartable
 ON totalcreditstable.pnumber = numseminartable.pnumber;
 	
+	
+CREATE VIEW DBCanGraduate AS
+	SELECT persnumber, totalcredits, branchspec_credits, mandatoryleft, mathcredits, researchcredits, numseminar, CASE
+		WHEN DBStudentSummary.mandatoryleft = 0 AND DBStudentSummary.branchspec_credits >= 10 AND DBStudentSummary.mathcredits >= 20 AND DBStudentSummary.researchcredits >= 10 AND DBStudentSummary.numseminar >= 1
+			THEN '1'
+		END as cangraduate
+	FROM DBStudentSummary;
+
 /*
 (SELECT Student.persnumber, SUM(Course.credits) as credits
 FROM Student JOIN HasTaken ON Student.persnumber =  HasTaken.persnumber
