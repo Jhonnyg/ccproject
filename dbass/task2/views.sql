@@ -96,8 +96,8 @@ LEFT OUTER JOIN
 	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN (SELECT Course.code as ccode FROM Course,CourseClass WHERE Course.code = CourseClass.code AND CourseClass.classname = 'seminar') ON HasTaken.code = ccode AND HasTaken.grade = ANY ('3','4','5')
 	GROUP BY Student.persnumber) numseminartable
 ON totalcreditstable.pnumber = numseminartable.pnumber;
-	
-	
+
+-- final composit of studentsummary and a cangraduate column
 CREATE VIEW DBCanGraduate AS
 	SELECT persnumber, totalcredits, branchspec_credits, mandatoryleft, mathcredits, researchcredits, numseminar, CASE
 		WHEN DBStudentSummary.mandatoryleft = 0 AND DBStudentSummary.branchspec_credits >= 10 AND DBStudentSummary.mathcredits >= 20 AND DBStudentSummary.researchcredits >= 10 AND DBStudentSummary.numseminar >= 1
@@ -105,23 +105,3 @@ CREATE VIEW DBCanGraduate AS
 			ELSE 'NO'
 		END as cangraduate
 	FROM DBStudentSummary;
-
-/*
-(SELECT Student.persnumber, SUM(Course.credits) as credits
-FROM Student JOIN HasTaken ON Student.persnumber =  HasTaken.persnumber
-JOIN Course ON Course.code = HasTaken.code
-		WHERE HasTaken.grade = ANY (3,4,5) GROUP BY Student.persnumber)
-
-
-SELECT Student.persnumber, SUM(Course.credits)
-FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber =  HasTaken.persnumber LEFT OUTER JOIN Course ON HasTaken.code = Course.code GROUP BY Student.persnumber
-*/
-
-/*
-SELECT Student.name as name,Course.name as coursename
-FROM Student,BranchMandatory,ProgrammeMandatory,Course
-WHERE ProgrammeMandatory.code = Course.code OR BranchMandatory.code = Course.code
-
-SELECT Student.name as name,Course.name as coursename
-FROM Student,HasTaken,Course
-WHERE Student.persnumber = HasTaken.persnumber AND Course.code = HasTaken.code; */
