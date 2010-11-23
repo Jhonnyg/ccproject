@@ -9,7 +9,7 @@ CREATE VIEW DBFinishedCourses AS
 	SELECT Student.persnumber as persnumber, Student.name as name, Course.name as coursename, grade
 	FROM HasTaken,Student,Course
 	WHERE Student.persnumber = HasTaken.persnumber
-	AND Course.code = HasTaken.code;
+	AND Course.code = HasTaken.code AND HasTaken.grade = ANY ('3','4','5');
 
 -- All registered and waiting students for all courses, along with their waiting status ('registered' or 'waiting').
 CREATE VIEW DBStudentStatus AS
@@ -45,7 +45,7 @@ CREATE VIEW DBRecommendedCourses AS
 	MINUS
 	(SELECT Student.persnumber as persnumber, Student.name as name, Course.name as coursename
 		FROM Student,HasTaken,Course
-		WHERE Student.persnumber = HasTaken.persnumber AND Course.code = HasTaken.code);
+		WHERE Student.persnumber = HasTaken.persnumber AND Course.code = HasTaken.code AND HasTaken.grade = ANY ('3','4','5'));
 
 
 CREATE VIEW DBStudentSummary AS
