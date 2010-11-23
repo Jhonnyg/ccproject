@@ -101,7 +101,8 @@ ON totalcreditstable.pnumber = numseminartable.pnumber;
 CREATE VIEW DBCanGraduate AS
 	SELECT persnumber, totalcredits, branchspec_credits, mandatoryleft, mathcredits, researchcredits, numseminar, CASE
 		WHEN DBStudentSummary.mandatoryleft = 0 AND DBStudentSummary.branchspec_credits >= 10 AND DBStudentSummary.mathcredits >= 20 AND DBStudentSummary.researchcredits >= 10 AND DBStudentSummary.numseminar >= 1
-			THEN '1'
+			THEN 'YES'
+			ELSE 'NO'
 		END as cangraduate
 	FROM DBStudentSummary;
 
