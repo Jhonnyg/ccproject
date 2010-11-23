@@ -52,6 +52,15 @@ CREATE VIEW DBRecommendedCourses AS
 SELECT Student.persnumber, SUM(Course.credits) as totalcredits
 	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN Course ON HasTaken.code = Course.code
 	GROUP BY Student.persnumber;
+	
+-- the number of branch-specific (mandatory and recommended) credits they have taken.
+SELECT Student.persnumber, SUM(Course.credits)
+	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber
+	LEFT OUTER JOIN ((SELECT BranchMandatory.code as ccode FROM BranchMandatory)
+	                  UNION
+	                 (SELECT BranchRecommended.code as ccode FROM BranchRecommended)) ON ccode = HasTaken.code
+	LEFT OUTER JOIN Course ON ccode = Course.code
+	GROUP BY Student.persnumber
 
 -- the number of mandatory courses they have yet to read (branch or programme).
 SELECT Student.persnumber, COUNT(DBMandatoryCourses.coursename) as mandatoryleft
@@ -59,12 +68,19 @@ SELECT Student.persnumber, COUNT(DBMandatoryCourses.coursename) as mandatoryleft
 	GROUP BY Student.persnumber;
 	
 -- the number of credits they have taken in courses that are classified as math courses.
-SELECT Student.persnumber, COUNT(ccode)
-	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN (SELECT Course.code as ccode FROM Course,CourseClass WHERE Course.code = CourseClass.code AND CourseClass.classname = 'mathematical') ON HasTaken.code = ccode
+SELECT Student.persnumber, SUM(credits) as mathcredits
+	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN (SELECT Course.code as ccode,Course.credits as credits FROM Course,CourseClass WHERE Course.code = CourseClass.code AND CourseClass.classname = 'mathematical') ON HasTaken.code = ccode
 	GROUP BY Student.persnumber;
-
 	
--- the number of branch-specific (mandatory and recommended) credits they have taken.
+-- the number of credits they have taken in courses that are classified as research courses.
+SELECT Student.persnumber, SUM(credits) as researchcredits
+	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN (SELECT Course.code as ccode,Course.credits as credits FROM Course,CourseClass WHERE Course.code = CourseClass.code AND CourseClass.classname = 'research') ON HasTaken.code = ccode
+	GROUP BY Student.persnumber;
+	
+-- the number of seminar courses they have read.
+SELECT Student.persnumber, COUNT(ccode) as numseminar
+	FROM Student LEFT OUTER JOIN HasTaken ON Student.persnumber = HasTaken.persnumber LEFT OUTER JOIN (SELECT Course.code as ccode FROM Course,CourseClass WHERE Course.code = CourseClass.code AND CourseClass.classname = 'seminar') ON HasTaken.code = ccode
+	GROUP BY Student.persnumber;
 	
 /*
 (SELECT Student.persnumber, SUM(Course.credits) as credits
