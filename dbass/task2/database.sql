@@ -59,7 +59,7 @@ CREATE TABLE Registered (
 CREATE TABLE WaitingList (
 	persnumber CHAR(12),
 	code       CHAR(6),
-	registertime	INT,
+	registertime	DATE,
 	FOREIGN KEY (persnumber) REFERENCES Student,
 	FOREIGN KEY (code) REFERENCES Course(code)
 );

@@ -7,17 +7,26 @@ CREATE OR REPLACE TRIGGER CourseRegistering
 	DECLARE
 		limited INT;
 		currentNum INT;
+		prereqleft INT;
 	BEGIN
-		SELECT maxstudents INTO limited FROM Course WHERE code = :newreg.coursecode;
-		IF limited IS NOT NULL THEN
-			SELECT COUNT (*) INTO currentNum FROM Registered WHERE code = :newreg.coursecode;
-			IF currentNum < limited THEN -- still some places left on the course
+		SELECT COUNT(*) INTO prereqleft FROM
+			((SELECT prereqcourse as course FROM PreReq WHERE PreReq.course = :newreg.coursecode)
+			 MINUS
+			 (SELECT code as course FROM HasTaken WHERE persnumber = :newreg.persnumber));
+		
+		IF prereqleft = 0 THEN
+			-- no pre req courses left
+			SELECT maxstudents INTO limited FROM Course WHERE code = :newreg.coursecode;
+			IF limited IS NOT NULL THEN
+				SELECT COUNT (*) INTO currentNum FROM Registered WHERE code = :newreg.coursecode;
+				IF currentNum < limited THEN -- still some places left on the course
+					INSERT INTO Registered VALUES(:newreg.persnumber, :newreg.coursecode);
+				ELSE -- otherwise; put on waiting list
+					INSERT INTO WaitingList VALUES(:newreg.persnumber, :newreg.coursecode, sysdate);
+				END IF;
+			ELSE -- not a limited course, just insert!
 				INSERT INTO Registered VALUES(:newreg.persnumber, :newreg.coursecode);
-			ELSE -- otherwise; put on waiting list
-				INSERT INTO WaitingList VALUES(:newreg.persnumber, :newreg.coursecode, sysdate);
 			END IF;
-		ELSE -- not a limited course, just insert!
-			INSERT INTO Registered VALUES(:newreg.persnumber, :newreg.coursecode);
 		END IF;
 	END;
 

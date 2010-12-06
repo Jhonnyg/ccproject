@@ -103,3 +103,4 @@ CREATE VIEW DBCanGraduate AS
 			ELSE 'NO'
 		END as cangraduate
 	FROM DBStudentSummary;
+	
