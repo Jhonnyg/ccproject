@@ -22,7 +22,7 @@ INSERT INTO Branch
 -- Courses
 INSERT INTO Course 
 	(code,name,credits,depname)
-	VALUES ('TDA357','Databases',10, 'Computing Science');
+	VALUES ('TDA357','Databases',10, 'Computing Science', 2);
 	
 INSERT INTO Course
 	(code,name,credits,depname)

@@ -13,14 +13,12 @@ CREATE VIEW DBFinishedCourses AS
 
 -- All registered and waiting students for all courses, along with their waiting status ('registered' or 'waiting').
 CREATE VIEW DBStudentStatus AS
-	SELECT * FROM (SELECT Student.persnumber as persnumber, Student.name as name,Course.name as coursename,'registered' as status
-		FROM Student,Registered,Course
-		WHERE Student.persnumber = Registered.persnumber
-			AND Course.code = Registered.code) UNION
-	(SELECT Student.persnumber as persnumber, Student.name as name, Course.name as coursename,'waiting' as status
-		FROM Student,WaitingList,Course
-		WHERE Student.persnumber = WaitingList.persnumber
-			AND Course.code = WaitingList.code);
+	SELECT * FROM (SELECT Registered.persnumber as persnumber,Course.code as coursecode,'registered' as status
+		FROM Registered,Course
+		WHERE Course.code = Registered.code) UNION
+	(SELECT WaitingList.persnumber as persnumber, Course.code as coursecode,'waiting' as status
+		FROM WaitingList,Course
+		WHERE Course.code = WaitingList.code);
 			
 
 -- For all students, the mandatory courses (branch and programme) they have not yet taken.
@@ -105,3 +103,4 @@ CREATE VIEW DBCanGraduate AS
 			ELSE 'NO'
 		END as cangraduate
 	FROM DBStudentSummary;
+	
