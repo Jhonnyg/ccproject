@@ -1,1 +1,1 @@
-empty
+CREATE TRIGGER CheckStudentRegistration
