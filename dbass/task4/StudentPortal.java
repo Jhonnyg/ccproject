@@ -160,11 +160,109 @@ public class StudentPortal
 
 	static void registerStudent(Connection conn, String student, String course)
 	{
-		// Your implementation here
+		try {
+			Statement myStmt = conn.createStatement();
+			myStmt.executeUpdate("INSERT INTO DBStudentStatus VALUES ('" + student + "', '" + course + "', 'registered')");
+			
+			// Check the new status of the registration
+			ResultSet rs = myStmt.executeQuery("SELECT * FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "'");
+			if (rs.next())
+			{
+				String register_result = rs.getString(3);
+				
+				// Get course name
+				rs = myStmt.executeQuery("SELECT name FROM Course WHERE code = '" + course + "'");
+				if (rs.next())
+				{
+					String full_coursename = rs.getString(1);
+					
+					if (register_result.equals("registered"))
+					{
+						System.out.println("You are now successfully registered to course " + course + " " + full_coursename + "!");
+					} else {
+						
+						// Get number on the waiting list
+						rs = myStmt.executeQuery("SELECT COUNT(*) FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "' AND status = 'waiting'");
+						rs.next();
+						System.out.println("Course " + course + " " + full_coursename + " is full, you are put in the waiting list as number " + rs.getInt(1).toString() + ".");
+					}
+				} else {
+					System.err.println("Failed to get full course name for course code '" + course + "'.");
+					System.exit(2);
+				}
+				
+			} else {
+				System.out.println("Error: Could not find user entry after registering.");
+				System.out.println("Check so that the user have taken all prerequisite courses!");
+			}
+
+		} catch (SQLException e) {
+			System.err.println(e);
+			System.exit(2);
+		}
+		
 	}
 
 	static void unregisterStudent(Connection conn, String student, String course)
 	{
-		// Your implementation here
+		try {
+			Statement myStmt = conn.createStatement();
+			
+			
+			// Check the new status of the registration
+			ResultSet rs = myStmt.executeQuery("SELECT status FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "'");
+			if (rs.next())
+			{
+				String reg_status = rs.getString(1);
+				myStmt.executeUpdate("DELETE FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "'");
+				
+				if (reg_status.equals("registered"))
+				{
+					System.out.println("You were unregistered from the course.");
+				} else {
+					System.out.println("You were removed from the waiting list for the course.");
+				}
+				
+			} else {
+				System.out.println("You are not registered/on the waiting list for that course!");
+			}
+			
+			/*
+			// Check the new status of the registration
+			ResultSet rs = myStmt.executeQuery("SELECT * FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "'");
+			if (rs.next())
+			{
+				String register_result = rs.getString(3);
+				
+				// Get course name
+				rs = myStmt.executeQuery("SELECT name FROM Course WHERE code = '" + course + "'");
+				if (rs.next())
+				{
+					String full_coursename = rs.getString(1);
+					
+					if (register_result == "registered")
+					{
+						System.out.println("You are now successfully registered to course " + course + " " + full_coursename + "!");
+					} else {
+						
+						// Get number on the waiting list
+						rs = myStmt.executeQuery("SELECT COUNT(*) FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "' AND status = 'waiting'");
+						rs.next();
+						System.out.println("Course " + course + " " + full_coursename + " is full, you are put in the waiting list as number " + rs.getString(1) + ".");
+					}
+				} else {
+					System.err.println("Failed to get full course name for course code '" + course + "'.");
+					System.exit(2);
+				}
+				
+			} else {
+				System.out.println("Error: Could not find user entry after registering.");
+				System.out.println("Check so that the user have taken all prerequisite courses!");
+			}*/
+
+		} catch (SQLException e) {
+			System.err.println(e);
+			System.exit(2);
+		}
 	}
 }
