@@ -81,7 +81,7 @@ public class StudentPortal
 				print_results 	+= "Branch: " + result.getString(4) + "\n";
 			}
 			
-			query = "SELECT * FROM DBFinishedCourses WHERE persnumber = '" + student + "'";
+			query = "SELECT * FROM HasTaken WHERE persnumber = '" + student + "'";
 			stmt = conn.createStatement();
 			result = stmt.executeQuery(query);
 			
@@ -92,8 +92,8 @@ public class StudentPortal
 			
 			while(result.next())
 			{
-				String course_code = result.getString(3);
-				String course_grade = result.getString(4);
+				String course_code = result.getString(2);
+				String course_grade = result.getString(3);
 				String course_query = "SELECT * FROM Course WHERE code = '" + course_code + "'";
 				
 				course_result = course_stmt.executeQuery(course_query);
@@ -182,9 +182,9 @@ public class StudentPortal
 					} else {
 						
 						// Get number on the waiting list
-						rs = myStmt.executeQuery("SELECT COUNT(*) FROM DBStudentStatus WHERE coursecode = '" + course + "' AND status = 'waiting'");
+						rs = myStmt.executeQuery("SELECT COUNT(*) FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "' AND status = 'waiting'");
 						rs.next();
-						System.out.println("Course " + course + " " + full_coursename + " is full, you are put in the waiting list as number " + rs.getString(1) + ".");
+						System.out.println("Course " + course + " " + full_coursename + " is full, you are put in the waiting list as number " + Integer.toString(rs.getInt(1)) + ".");
 					}
 				} else {
 					System.err.println("Failed to get full course name for course code '" + course + "'.");
