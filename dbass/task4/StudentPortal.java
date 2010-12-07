@@ -95,9 +95,9 @@ public class StudentPortal
 					} else {
 						
 						// Get number on the waiting list
-						rs = myStmt.executeQuery("SELECT COUNT(*) FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "' AND status = 'waiting'");
+						rs = myStmt.executeQuery("SELECT COUNT(*) FROM DBStudentStatus WHERE coursecode = '" + course + "' AND status = 'waiting'");
 						rs.next();
-						System.out.println("Course " + course + " " + full_coursename + " is full, you are put in the waiting list as number " + rs.getInt(1).toString() + ".");
+						System.out.println("Course " + course + " " + full_coursename + " is full, you are put in the waiting list as number " + rs.getString(1) + ".");
 					}
 				} else {
 					System.err.println("Failed to get full course name for course code '" + course + "'.");
