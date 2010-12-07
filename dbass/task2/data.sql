@@ -91,6 +91,9 @@ INSERT INTO Student
 INSERT INTO Student
 	VALUES ('8701983522','Filip Lundborg', 'Mechatronics', 'Automation Control, Automation And Mechatronics');
 	
+INSERT INTO Student
+	VALUES ('8510125555','Johannes Algelind', 'Computer Languages', 'Computer Science and Engineering');
+	
 -- Courses registered
 INSERT INTO Registered VALUES ('8607084632', 'TDA357');
 

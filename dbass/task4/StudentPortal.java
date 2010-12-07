@@ -139,9 +139,9 @@ public class StudentPortal
 			if(result.next())
 			{
 				print_results += "Seminar courses taken: " + result.getString(7) + "\n";
-				print_results += "Math credits taken: " + result.getString(5) + "\n";
-				print_results += "Research credits taken: " + result.getString(6) + "\n";
-				print_results += "Total credits taken: " + result.getString(2) + "\n";
+				print_results += "Math credits taken: " + result.getInt(5) + "\n";
+				print_results += "Research credits taken: " + result.getInt(6) + "\n";
+				print_results += "Total credits taken: " + result.getInt(2) + "\n";
 				print_results += "Fulfills the requirements for graduation: " + result.getString(8) + "\n";
 			}
 			
@@ -162,38 +162,48 @@ public class StudentPortal
 	{
 		try {
 			Statement myStmt = conn.createStatement();
-			myStmt.executeUpdate("INSERT INTO DBStudentStatus VALUES ('" + student + "', '" + course + "', 'registered')");
 			
-			// Check the new status of the registration
-			ResultSet rs = myStmt.executeQuery("SELECT * FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "'");
-			if (rs.next())
+			ResultSet rs = myStmt.executeQuery("SELECT status FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "'");
+			if (!rs.next())
 			{
-				String register_result = rs.getString(3);
-				
-				// Get course name
-				rs = myStmt.executeQuery("SELECT name FROM Course WHERE code = '" + course + "'");
+			
+				// Insert registration
+				myStmt.executeUpdate("INSERT INTO DBStudentStatus VALUES ('" + student + "', '" + course + "', 'registered')");
+			
+				// Check the new status of the registration
+				rs = myStmt.executeQuery("SELECT * FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "'");
 				if (rs.next())
 				{
-					String full_coursename = rs.getString(1);
-					
-					if (register_result.equals("registered"))
+					String register_result = rs.getString(3);
+				
+					// Get course name
+					rs = myStmt.executeQuery("SELECT name FROM Course WHERE code = '" + course + "'");
+					if (rs.next())
 					{
-						System.out.println("You are now successfully registered to course " + course + " " + full_coursename + "!");
-					} else {
+						String full_coursename = rs.getString(1);
+					
+						if (register_result.equals("registered"))
+						{
+							System.out.println("You are now successfully registered to course " + course + " " + full_coursename + "!");
+						} else {
 						
-						// Get number on the waiting list
-						rs = myStmt.executeQuery("SELECT COUNT(*) FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "' AND status = 'waiting'");
-						rs.next();
-						System.out.println("Course " + course + " " + full_coursename + " is full, you are put in the waiting list as number " + Integer.toString(rs.getInt(1)) + ".");
+							// Get number on the waiting list
+							rs = myStmt.executeQuery("SELECT COUNT(*) FROM DBStudentStatus WHERE coursecode = '" + course + "' AND status = 'waiting'");
+							rs.next();
+							System.out.println("Course " + course + " " + full_coursename + " is full, you are put in the waiting list as number " + Integer.toString(rs.getInt(1)) + ".");
+						}
+					} else {
+						System.err.println("Failed to get full course name for course code '" + course + "'.");
+						System.exit(2);
 					}
+				
 				} else {
-					System.err.println("Failed to get full course name for course code '" + course + "'.");
-					System.exit(2);
+					System.out.println("Error while trying to register for course.");
+					System.out.println("Check so that the user have taken all prerequisite courses!");
 				}
 				
 			} else {
-				System.out.println("Error: Could not find user entry after registering.");
-				System.out.println("Check so that the user have taken all prerequisite courses!");
+				System.out.println("Error: You are allready " + rs.getString(1) + " for this course!");
 			}
 
 		} catch (SQLException e) {
