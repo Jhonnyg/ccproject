@@ -26,20 +26,19 @@ public class StudentPortal
 				String student = args[0]; // This is the identifier for the student.
 				BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
 				System.out.println("Welcome!");
+				
+			
 				while(true) {
 					System.out.println("Please choose a mode of operation:");
 					System.out.print("? > ");
 					String mode = input.readLine();
 					if ((new String("information")).startsWith(mode.toLowerCase())) {
-						/* Information mode */
 						getInformation(conn, student);
 					} else if ((new String("register")).startsWith(mode.toLowerCase())) {
-						/* Register student mode */
 						System.out.print("Register for what course? > ");
 						String course = input.readLine();
 						registerStudent(conn, student, course);
 					} else if ((new String("unregister")).startsWith(mode.toLowerCase())) {
-						/* Unregister student mode */
 						System.out.print("Unregister from what course? > ");
 						String course = input.readLine();
 						unregisterStudent(conn, student, course);
@@ -51,6 +50,7 @@ public class StudentPortal
 						continue;
 					}
 				}
+				
 				conn.close();
 			} catch (SQLException e) {
 				System.err.println(e);
@@ -67,7 +67,94 @@ public class StudentPortal
 
 	static void getInformation(Connection conn, String student)
 	{
-		// Your implementation here
+		String query = "SELECT * FROM DBStudents WHERE persnumber = '" + student + "'";	
+		try {
+			Statement stmt = conn.createStatement();
+			ResultSet result = stmt.executeQuery(query);
+			
+			String print_results = "Information for student " + student + "\n----------------------------------\n";
+				
+			if(result.next())
+			{
+				print_results  	+= "Name: " + result.getString(2) + "\n";
+				print_results 	+= "Programme: " + result.getString(3) + "\n";
+				print_results 	+= "Branch: " + result.getString(4) + "\n";
+			}
+			
+			query = "SELECT * FROM DBFinishedCourses WHERE persnumber = '" + student + "'";
+			stmt = conn.createStatement();
+			result = stmt.executeQuery(query);
+			
+			print_results 	+= "\nRead courses (name (code), credits: grade):\n";
+			
+			Statement course_stmt = conn.createStatement();
+			ResultSet course_result;
+			
+			while(result.next())
+			{
+				String course_code = result.getString(3);
+				String course_grade = result.getString(4);
+				String course_query = "SELECT * FROM Course WHERE code = '" + course_code + "'";
+				
+				course_result = course_stmt.executeQuery(course_query);
+				
+				if(course_result.next())
+				{
+					String course_name = course_result.getString(2);
+					String course_credits = course_result.getString(4);
+					print_results += "\t" + course_name + "(" + course_code + "), " + course_credits + ": " + course_grade + "\n";
+				}
+			}
+			
+			query = "SELECT * FROM DBStudentStatus WHERE persnumber = '" + student + "'";
+			
+			stmt = conn.createStatement();
+			result = stmt.executeQuery(query);
+			
+			print_results += "\nRegistered Courses (name (code), credits: status):\n";
+			course_stmt = conn.createStatement();
+			
+			while(result.next())
+			{
+				String course_code = result.getString(2);
+				String course_status = result.getString(3);
+				query = "SELECT * FROM Course WHERE code = '" + course_code + "'";
+				
+				course_result = stmt.executeQuery(query);
+				
+				if(course_result.next())
+				{
+					String course_name = course_result.getString(2);
+					String course_credits = course_result.getString(4);
+					print_results += "\t" + course_name + "(" + course_code + "), " + course_credits + ": " + course_status + "\n";
+				}
+			}
+			
+			query 	= "SELECT * FROM DBCanGraduate WHERE persnumber = '" + student + "'";
+			stmt 	= conn.createStatement();
+			result 	= stmt.executeQuery(query);
+			
+			print_results += "\n";
+			
+			if(result.next())
+			{
+				print_results += "Seminar courses taken: " + result.getString(7) + "\n";
+				print_results += "Math credits taken: " + result.getString(5) + "\n";
+				print_results += "Research credits taken: " + result.getString(6) + "\n";
+				print_results += "Total credits taken: " + result.getString(2) + "\n";
+				print_results += "Fulfills the requirements for graduation: " + result.getString(8) + "\n";
+			}
+			
+			print_results += "----------------------------------";
+			System.out.println(print_results);
+			
+
+		} catch (SQLException e) {
+			System.err.println(e);
+			System.exit(2);
+		}
+		
+				
 	}
 
 
