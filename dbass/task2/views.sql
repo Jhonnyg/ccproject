@@ -6,7 +6,7 @@ CREATE VIEW DBStudents AS
 
 -- For all students, all finished courses, along with their grades.
 CREATE VIEW DBFinishedCourses AS 
-	SELECT Student.persnumber as persnumber, Student.name as name, Course.name as coursename, grade
+	SELECT Student.persnumber as persnumber, Student.name as name, Course.code as coursecode, grade
 	FROM HasTaken,Student,Course
 	WHERE Student.persnumber = HasTaken.persnumber
 	AND Course.code = HasTaken.code AND HasTaken.grade = ANY ('3','4','5');
