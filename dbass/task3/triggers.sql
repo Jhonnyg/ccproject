@@ -33,7 +33,16 @@ CREATE OR REPLACE TRIGGER CourseRegistering
 				ELSE -- not a limited course, just insert!
 					INSERT INTO Registered VALUES(:newreg.persnumber, :newreg.coursecode);
 				END IF;
+				
+			ELSE
+			
+				RAISE_APPLICATION_ERROR(-20000, 'Havent taken all prerequisites!'); 
+				
 			END IF;
+		
+		ELSE
+		
+			RAISE_APPLICATION_ERROR(-20000, 'Allready taken course!'); 
 		
 		END IF;
 	END;

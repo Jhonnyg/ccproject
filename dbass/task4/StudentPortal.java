@@ -237,38 +237,6 @@ public class StudentPortal
 				System.out.println("You are not registered/on the waiting list for that course!");
 			}
 			
-			/*
-			// Check the new status of the registration
-			ResultSet rs = myStmt.executeQuery("SELECT * FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "'");
-			if (rs.next())
-			{
-				String register_result = rs.getString(3);
-				
-				// Get course name
-				rs = myStmt.executeQuery("SELECT name FROM Course WHERE code = '" + course + "'");
-				if (rs.next())
-				{
-					String full_coursename = rs.getString(1);
-					
-					if (register_result == "registered")
-					{
-						System.out.println("You are now successfully registered to course " + course + " " + full_coursename + "!");
-					} else {
-						
-						// Get number on the waiting list
-						rs = myStmt.executeQuery("SELECT COUNT(*) FROM DBStudentStatus WHERE persnumber = '" + student + "' AND coursecode = '" + course + "' AND status = 'waiting'");
-						rs.next();
-						System.out.println("Course " + course + " " + full_coursename + " is full, you are put in the waiting list as number " + rs.getString(1) + ".");
-					}
-				} else {
-					System.err.println("Failed to get full course name for course code '" + course + "'.");
-					System.exit(2);
-				}
-				
-			} else {
-				System.out.println("Error: Could not find user entry after registering.");
-				System.out.println("Check so that the user have taken all prerequisite courses!");
-			}*/
 
 		} catch (SQLException e) {
 			System.err.println(e);
