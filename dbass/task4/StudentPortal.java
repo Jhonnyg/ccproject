@@ -54,10 +54,8 @@ public class StudentPortal
 				conn.close();
 			} catch (SQLException e) {
 				System.err.println(e);
-				System.exit(2);
 			} catch (IOException e) {
 				System.err.println(e);
-				System.exit(2);
 			}
 		} else {
 			System.err.println("Wrong number of arguments");
@@ -151,7 +149,6 @@ public class StudentPortal
 
 		} catch (SQLException e) {
 			System.err.println(e);
-			System.exit(2);
 		}
 		
 				
@@ -194,7 +191,6 @@ public class StudentPortal
 						}
 					} else {
 						System.err.println("Failed to get full course name for course code '" + course + "'.");
-						System.exit(2);
 					}
 				
 				} else {
@@ -208,7 +204,6 @@ public class StudentPortal
 
 		} catch (SQLException e) {
 			System.err.println(e);
-			System.exit(2);
 		}
 		
 	}
@@ -272,7 +267,6 @@ public class StudentPortal
 
 		} catch (SQLException e) {
 			System.err.println(e);
-			System.exit(2);
 		}
 	}
 }
